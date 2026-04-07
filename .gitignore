@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.env
+fars_kg.db
+*.sqlite3
+.coverage
+htmlcov/
+dist/
+build/
+.codex/
+.omx/
