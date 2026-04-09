@@ -18,6 +18,11 @@ def root_redirect() -> RedirectResponse:
     return RedirectResponse(url="/fars", status_code=307)
 
 
+@router.get("/consol", include_in_schema=False)
+def console_typo_redirect() -> RedirectResponse:
+    return RedirectResponse(url="/console", status_code=307)
+
+
 @router.get("/fars", response_class=HTMLResponse, include_in_schema=False)
 def fars_live_style_page(request: Request) -> HTMLResponse:
     api_prefix = request.app.state.settings.api_prefix

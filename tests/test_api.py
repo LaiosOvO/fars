@@ -234,6 +234,10 @@ def test_console_ui_routes(tmp_path: Path) -> None:
     assert root.status_code in {307, 308}
     assert root.headers["location"] == "/fars"
 
+    typo = client.get("/consol", follow_redirects=False)
+    assert typo.status_code in {307, 308}
+    assert typo.headers["location"] == "/console"
+
     fars = client.get("/fars")
     assert fars.status_code == 200
     assert "text/html" in fars.headers["content-type"]
