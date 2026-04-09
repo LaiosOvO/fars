@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-04-08)
 Phase: foundation, semantic enrichment, workflow surfaces, and cleanup complete
 Plan: full verification complete
 Status: Complete
-Last activity: 2026-04-09 — Added `/fars` refresh cadence/countdown indicators and kept single-pass sanitized live refresh; verified 50 passing tests
+Last activity: 2026-04-09 — Added Codex-configurable auto-experiment operator UI (`/console`) and wired LLM config through research-loop APIs; verified 50 passing tests
 
 Progress: [██████████] 100%
 
@@ -99,6 +99,8 @@ Recent decisions affecting current work:
 - Enhancement: public `/fars` now reads a sanitized `/fars/events` feed and displays latest run events with a last-updated indicator.
 - Enhancement: public `/fars` now surfaces visible counts for deployments/runs/events and refreshes them from a single live fetch cycle.
 - Enhancement: public `/fars` now shows refresh cadence and next-refresh countdown pills for clearer live status rhythm.
+- Enhancement: `/console` now provides Codex LLM profile/model/reasoning controls for single run, batch run, and continue-run auto experiments.
+- Enhancement: research-loop run/batch/continue APIs now accept and persist Codex LLM execution metadata (`profile/model/reasoning`) for experiment traceability.
 
 ### Pending Todos
 

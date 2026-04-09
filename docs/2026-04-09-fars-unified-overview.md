@@ -406,6 +406,8 @@ operator view：
 
 - single run
 - batch run
+- continue run（auto experiment continuation）
+- Codex LLM config controls（profile/model/reasoning）
 - reconcile
 - paper explorer
 - graph viewer
@@ -569,12 +571,12 @@ make db-current
 - `POST /api/runs/{run_id}/experiment-results`
 - `POST /api/runs/{run_id}/experiment-results/auto`
 - `GET /api/runs/{run_id}/events`
-- `POST /api/research-loops/run`
-- `POST /api/research-loops/{run_id}/continue`
+- `POST /api/research-loops/run`（支持 `llm_profile` / `llm_model` / `llm_reasoning_effort`）
+- `POST /api/research-loops/{run_id}/continue`（支持 `llm_profile` / `llm_model` / `llm_reasoning_effort`）
 
 ## 8.5 batch / reconcile
 
-- `POST /api/research-loops/batch-run`
+- `POST /api/research-loops/batch-run`（支持 `llm_profile` / `llm_model` / `llm_reasoning_effort`）
 - `POST /api/research-loops/reconcile`
 - `GET /api/research-loops/batches`
 - `GET /api/research-loops/batches/{batch_id}/manifest`

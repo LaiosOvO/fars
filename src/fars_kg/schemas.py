@@ -34,6 +34,12 @@ class SystemInfoResponse(BaseModel):
     worktree_root: str
     request_id_header: str
     request_logging_enabled: bool
+    llm_provider: str
+    llm_default_profile: str
+    llm_frontier_model: str
+    llm_standard_model: str
+    llm_spark_model: str
+    llm_default_reasoning_effort: str
 
 
 class IngestTopicRequest(BaseModel):
@@ -293,6 +299,9 @@ class ResearchRunResultWriteRequest(BaseModel):
 
 class ContinueRunRequest(BaseModel):
     iterations: int = Field(default=1, ge=1, le=50)
+    llm_profile: str | None = None
+    llm_model: str | None = None
+    llm_reasoning_effort: str | None = None
 
 
 class ResearchRunRead(BaseModel):
@@ -372,6 +381,9 @@ class AutonomousResearchLoopRequest(BaseModel):
     iterations: int = Field(default=1, ge=1, le=20)
     branch_name: str | None = None
     use_worktree: bool = False
+    llm_profile: str | None = None
+    llm_model: str | None = None
+    llm_reasoning_effort: str | None = None
 
 
 class BatchAutonomousResearchLoopRequest(BaseModel):
@@ -381,6 +393,9 @@ class BatchAutonomousResearchLoopRequest(BaseModel):
     use_worktree: bool = False
     max_concurrency: int = Field(default=1, ge=1, le=8)
     branch_prefix: str | None = None
+    llm_profile: str | None = None
+    llm_model: str | None = None
+    llm_reasoning_effort: str | None = None
 
 
 class RunReconciliationRequest(BaseModel):
@@ -408,6 +423,10 @@ class AutonomousResearchLoopResponse(BaseModel):
     used_worktree: bool
     worktree_path: str | None = None
     artifact_dir: str | None = None
+    llm_provider: str | None = None
+    llm_profile: str | None = None
+    llm_model: str | None = None
+    llm_reasoning_effort: str | None = None
     summary: str
 
 
@@ -455,6 +474,10 @@ class BatchAutonomousResearchLoopResponse(BaseModel):
     requested_concurrency: int
     completed_count: int
     failed_count: int
+    llm_provider: str | None = None
+    llm_profile: str | None = None
+    llm_model: str | None = None
+    llm_reasoning_effort: str | None = None
     items: list[BatchAutonomousResearchLoopItem]
     reconciliation: BatchLoopReconciliationResponse
     artifact: BatchArtifactBundleResponse

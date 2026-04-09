@@ -27,6 +27,27 @@ class TaskExecutionRecord:
 
 
 class DeterministicLocalTaskRunner:
+    def __init__(
+        self,
+        *,
+        llm_provider: str = "codex",
+        llm_profile: str = "frontier",
+        llm_model: str = "gpt-5.4",
+        llm_reasoning_effort: str = "high",
+    ) -> None:
+        self.llm_provider = llm_provider
+        self.llm_profile = llm_profile
+        self.llm_model = llm_model
+        self.llm_reasoning_effort = llm_reasoning_effort
+
+    def metadata(self) -> dict[str, str]:
+        return {
+            "llm_provider": self.llm_provider,
+            "llm_profile": self.llm_profile,
+            "llm_model": self.llm_model,
+            "llm_reasoning_effort": self.llm_reasoning_effort,
+        }
+
     def execute(self, session: Session, task: ExperimentTask, *, iteration_index: int) -> TaskExecutionRecord:
         paper = get_paper(session, task.paper_id)
         if paper is None:
@@ -78,12 +99,13 @@ class DeterministicLocalTaskRunner:
         dataset: str | None,
         metric: str | None,
     ) -> tuple[str | None, str, str, str]:
+        source = self._task_source(task_type)
         if not (method and dataset and metric):
-            return None, "discard", "Missing method/dataset/metric configuration.", f"executor_{task_type}"
+            return None, "discard", "Missing method/dataset/metric configuration.", source
 
         base_value = BENCHMARK_REGISTRY.get((method, dataset, metric))
         if base_value is None:
-            return None, "discard", "No deterministic benchmark mapping available.", f"executor_{task_type}"
+            return None, "discard", "No deterministic benchmark mapping available.", source
 
         numeric_value = float(base_value)
         threshold = KEEP_THRESHOLDS.get(metric, 0.0)
@@ -92,23 +114,27 @@ class DeterministicLocalTaskRunner:
             final_value = numeric_value
             decision = "keep" if final_value >= threshold else "discard"
             rationale = f"{metric}={final_value} benchmark {'meets' if decision == 'keep' else 'misses'} threshold {threshold}."
-            return str(final_value), decision, rationale, "executor_benchmark"
+            return str(final_value), decision, rationale, source
 
         if task_type == "ablation":
             penalty = 1.0 if metric in {"BLEU", "Accuracy"} else 0.05
             final_value = max(0.0, numeric_value - penalty)
             decision = "keep" if final_value >= threshold else "discard"
             rationale = f"{metric}={final_value} after ablation {'meets' if decision == 'keep' else 'misses'} threshold {threshold}."
-            return str(final_value), decision, rationale, "executor_ablation"
+            return str(final_value), decision, rationale, source
 
         if task_type == "comparison":
             bonus = 0.2 if metric in {"BLEU", "Accuracy"} else 0.01
             final_value = numeric_value + bonus
             decision = "keep" if final_value >= threshold else "discard"
             rationale = f"{metric}={final_value} comparison run {'meets' if decision == 'keep' else 'misses'} threshold {threshold}."
-            return str(final_value), decision, rationale, "executor_comparison"
+            return str(final_value), decision, rationale, source
 
-        return str(numeric_value), "discard", f"Unknown task type '{task_type}', defaulting to discard.", f"executor_{task_type}"
+        return str(numeric_value), "discard", f"Unknown task type '{task_type}', defaulting to discard.", source
+
+    def _task_source(self, task_type: str) -> str:
+        model = self.llm_model or "unknown-model"
+        return f"executor_{task_type}:{model}"
 
 
 def execute_experiment_tasks(
@@ -143,6 +169,7 @@ def execute_experiment_tasks(
                 "count": len(records),
                 "iteration_range": [start_index, start_index + len(records) - 1],
                 "decisions": [record.decision for record in records],
+                "llm": runner.metadata(),
             },
         )
     return records

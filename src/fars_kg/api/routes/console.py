@@ -281,10 +281,31 @@ def _console_html(api_prefix: str) -> str:
     <div class="grid">
       <div class="panel span-6">
         <h2>Single Research Loop</h2>
+        <p>Auto experiment run with Codex LLM config.</p>
         <div class="row">
           <div class="c6"><input id="run-topic" placeholder="topic (e.g. transformers)" value="transformers" /></div>
           <div class="c3"><input id="run-limit" type="number" min="1" max="20" value="2" /></div>
           <div class="c3"><input id="run-iter" type="number" min="1" max="20" value="2" /></div>
+        </div>
+        <div class="row">
+          <div class="c4">
+            <select id="run-llm-profile">
+              <option value="frontier" selected>llm profile: frontier</option>
+              <option value="standard">llm profile: standard</option>
+              <option value="spark">llm profile: spark</option>
+              <option value="custom">llm profile: custom</option>
+            </select>
+          </div>
+          <div class="c4"><input id="run-llm-model" placeholder="model (auto from profile if empty)" /></div>
+          <div class="c4">
+            <select id="run-llm-reasoning">
+              <option value="">reasoning: profile default</option>
+              <option value="low">low</option>
+              <option value="medium">medium</option>
+              <option value="high">high</option>
+              <option value="xhigh">xhigh</option>
+            </select>
+          </div>
         </div>
         <div class="row">
           <div class="c6"><input id="run-branch" placeholder="branch name (optional)" /></div>
@@ -300,6 +321,7 @@ def _console_html(api_prefix: str) -> str:
 
       <div class="panel span-6">
         <h2>Batch Loop</h2>
+        <p>Auto experiment batch with shared Codex LLM config.</p>
         <div class="row">
           <div class="c12"><textarea id="batch-topics" placeholder="one topic per line">transformers
 machine translation</textarea></div>
@@ -318,6 +340,57 @@ machine translation</textarea></div>
             </select>
           </div>
           <div class="c6"><button id="batch-submit">Run Batch</button></div>
+        </div>
+        <div class="row">
+          <div class="c4">
+            <select id="batch-llm-profile">
+              <option value="frontier" selected>llm profile: frontier</option>
+              <option value="standard">llm profile: standard</option>
+              <option value="spark">llm profile: spark</option>
+              <option value="custom">llm profile: custom</option>
+            </select>
+          </div>
+          <div class="c4"><input id="batch-llm-model" placeholder="model (auto from profile if empty)" /></div>
+          <div class="c4">
+            <select id="batch-llm-reasoning">
+              <option value="">reasoning: profile default</option>
+              <option value="low">low</option>
+              <option value="medium">medium</option>
+              <option value="high">high</option>
+              <option value="xhigh">xhigh</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="panel span-12">
+        <h2>Continue Auto Experiment Run</h2>
+        <div class="row">
+          <div class="c4"><input id="continue-run-id" type="number" min="1" placeholder="run id" /></div>
+          <div class="c4"><input id="continue-iterations" type="number" min="1" max="20" value="1" /></div>
+          <div class="c4"><button id="continue-submit">Continue Run</button></div>
+        </div>
+        <div class="row">
+          <div class="c4">
+            <select id="continue-llm-profile">
+              <option value="frontier" selected>llm profile: frontier</option>
+              <option value="standard">llm profile: standard</option>
+              <option value="spark">llm profile: spark</option>
+              <option value="custom">llm profile: custom</option>
+            </select>
+          </div>
+          <div class="c4"><input id="continue-llm-model" placeholder="model (auto from profile if empty)" /></div>
+          <div class="c4">
+            <select id="continue-llm-reasoning">
+              <option value="">reasoning: profile default</option>
+              <option value="low">low</option>
+              <option value="medium">medium</option>
+              <option value="high">high</option>
+              <option value="xhigh">xhigh</option>
+            </select>
+          </div>
         </div>
       </div>
     </div>
@@ -398,6 +471,14 @@ machine translation</textarea></div>
   <script>
     const API = "{api_prefix}";
     const logEl = document.getElementById("log");
+    const llmDefaults = {{
+      llm_provider: "codex",
+      llm_default_profile: "frontier",
+      llm_frontier_model: "gpt-5.4",
+      llm_standard_model: "gpt-5.4-mini",
+      llm_spark_model: "gpt-5.3-codex-spark",
+      llm_default_reasoning_effort: "high",
+    }};
 
     function log(msg, payload) {{
       const line = `[${{new Date().toLocaleTimeString()}}] ${{msg}}`;
@@ -422,6 +503,63 @@ machine translation</textarea></div>
         throw new Error(detail);
       }}
       return res.json();
+    }}
+
+    function modelForProfile(profile) {{
+      if (profile === "spark") return llmDefaults.llm_spark_model;
+      if (profile === "standard") return llmDefaults.llm_standard_model;
+      return llmDefaults.llm_frontier_model;
+    }}
+
+    function reasoningForProfile(profile) {{
+      if (profile === "spark") return "low";
+      if (profile === "standard") return llmDefaults.llm_default_reasoning_effort || "high";
+      return llmDefaults.llm_default_reasoning_effort || "high";
+    }}
+
+    function buildLlmPayload(prefix) {{
+      const profile = (document.getElementById(`${{prefix}}-llm-profile`)?.value || llmDefaults.llm_default_profile || "frontier").trim();
+      const modelInput = document.getElementById(`${{prefix}}-llm-model`)?.value || "";
+      const reasoningInput = document.getElementById(`${{prefix}}-llm-reasoning`)?.value || "";
+      const model = modelInput.trim() || modelForProfile(profile);
+      const reasoning = reasoningInput.trim() || reasoningForProfile(profile);
+      return {{
+        llm_profile: profile,
+        llm_model: model,
+        llm_reasoning_effort: reasoning,
+      }};
+    }}
+
+    function setDefaultLlmUI(prefix) {{
+      const profileNode = document.getElementById(`${{prefix}}-llm-profile`);
+      const modelNode = document.getElementById(`${{prefix}}-llm-model`);
+      const reasoningNode = document.getElementById(`${{prefix}}-llm-reasoning`);
+      if (!profileNode || !modelNode || !reasoningNode) return;
+      profileNode.value = llmDefaults.llm_default_profile || "frontier";
+      modelNode.value = modelForProfile(profileNode.value);
+      reasoningNode.value = "";
+      profileNode.addEventListener("change", () => {{
+        if (profileNode.value !== "custom") {{
+          modelNode.value = modelForProfile(profileNode.value);
+        }}
+      }});
+    }}
+
+    async function loadLlmDefaults() {{
+      try {{
+        const info = await fetchJson(`${{API}}/system/info`);
+        llmDefaults.llm_provider = info.llm_provider || llmDefaults.llm_provider;
+        llmDefaults.llm_default_profile = info.llm_default_profile || llmDefaults.llm_default_profile;
+        llmDefaults.llm_frontier_model = info.llm_frontier_model || llmDefaults.llm_frontier_model;
+        llmDefaults.llm_standard_model = info.llm_standard_model || llmDefaults.llm_standard_model;
+        llmDefaults.llm_spark_model = info.llm_spark_model || llmDefaults.llm_spark_model;
+        llmDefaults.llm_default_reasoning_effort = info.llm_default_reasoning_effort || llmDefaults.llm_default_reasoning_effort;
+      }} catch (_err) {{
+        // keep defaults
+      }}
+      setDefaultLlmUI("run");
+      setDefaultLlmUI("batch");
+      setDefaultLlmUI("continue");
     }}
 
     function badge(status) {{
@@ -548,6 +686,7 @@ machine translation</textarea></div>
           iterations: Number(document.getElementById("run-iter").value),
           branch_name: document.getElementById("run-branch").value.trim() || null,
           use_worktree: document.getElementById("run-worktree").value === "true",
+          ...buildLlmPayload("run"),
         }};
         log("run loop started", payload);
         const result = await fetchJson(`${{API}}/research-loops/run`, {{
@@ -570,6 +709,7 @@ machine translation</textarea></div>
           max_concurrency: Number(document.getElementById("batch-concurrency").value),
           branch_prefix: document.getElementById("batch-prefix").value.trim() || null,
           use_worktree: document.getElementById("batch-worktree").value === "true",
+          ...buildLlmPayload("batch"),
         }};
         log("batch loop started", payload);
         const result = await fetchJson(`${{API}}/research-loops/batch-run`, {{
@@ -580,6 +720,28 @@ machine translation</textarea></div>
         await refreshAll();
       }} catch (err) {{
         log("batch loop failed: " + err.message);
+      }}
+    }}
+
+    async function submitContinue() {{
+      try {{
+        const runId = Number(document.getElementById("continue-run-id").value);
+        if (!Number.isInteger(runId) || runId <= 0) {{
+          throw new Error("Provide a valid run id");
+        }}
+        const payload = {{
+          iterations: Number(document.getElementById("continue-iterations").value),
+          ...buildLlmPayload("continue"),
+        }};
+        log(`continue run started #${{runId}}`, payload);
+        const result = await fetchJson(`${{API}}/research-loops/${{runId}}/continue`, {{
+          method: "POST",
+          body: JSON.stringify(payload),
+        }});
+        log(`continue run completed #${{runId}}`, result);
+        await refreshAll();
+      }} catch (err) {{
+        log("continue run failed: " + err.message);
       }}
     }}
 
@@ -646,6 +808,7 @@ machine translation</textarea></div>
 
     document.getElementById("run-submit").addEventListener("click", submitRun);
     document.getElementById("batch-submit").addEventListener("click", submitBatch);
+    document.getElementById("continue-submit").addEventListener("click", submitContinue);
     document.getElementById("reconcile-submit").addEventListener("click", submitReconcile);
     document.getElementById("graph-load").addEventListener("click", loadGraph);
     document.getElementById("paper-search").addEventListener("click", () => searchPapers().catch(err => log("paper search failed: " + err.message)));
@@ -654,7 +817,7 @@ machine translation</textarea></div>
         searchPapers().catch(err => log("paper search failed: " + err.message));
       }}
     }});
-    refreshAll()
+    Promise.all([refreshAll(), loadLlmDefaults()])
       .then(() => searchPapers())
       .catch(err => log("initial load failed: " + err.message));
   </script>

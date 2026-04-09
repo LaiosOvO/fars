@@ -60,6 +60,9 @@ def run_research_loop(
             iterations=payload.iterations,
             branch_name=payload.branch_name,
             use_worktree=payload.use_worktree,
+            llm_profile=payload.llm_profile,
+            llm_model=payload.llm_model,
+            llm_reasoning_effort=payload.llm_reasoning_effort,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -87,6 +90,9 @@ def run_batch_research_loop(
             use_worktree=payload.use_worktree,
             max_concurrency=payload.max_concurrency,
             branch_prefix=payload.branch_prefix,
+            llm_profile=payload.llm_profile,
+            llm_model=payload.llm_model,
+            llm_reasoning_effort=payload.llm_reasoning_effort,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -223,6 +229,9 @@ def continue_research_loop(
             session,
             run_id=run_id,
             iterations=payload.iterations,
+            llm_profile=payload.llm_profile,
+            llm_model=payload.llm_model,
+            llm_reasoning_effort=payload.llm_reasoning_effort,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

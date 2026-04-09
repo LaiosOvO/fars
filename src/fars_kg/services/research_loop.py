@@ -64,6 +64,10 @@ class AutonomousResearchLoopResult:
     used_worktree: bool
     worktree_path: str | None
     artifact_dir: str | None
+    llm_provider: str | None
+    llm_profile: str | None
+    llm_model: str | None
+    llm_reasoning_effort: str | None
     summary: str
 
 
@@ -107,6 +111,10 @@ class BatchAutonomousResearchLoopResult:
     requested_concurrency: int
     completed_count: int
     failed_count: int
+    llm_provider: str | None
+    llm_profile: str | None
+    llm_model: str | None
+    llm_reasoning_effort: str | None
     items: list[BatchLoopItemResult]
     reconciliation: BatchLoopReconciliation
     artifact: BatchArtifactBundle
@@ -143,7 +151,15 @@ class AutonomousResearchLoopService:
         iterations: int = 1,
         branch_name: str | None = None,
         use_worktree: bool = False,
+        llm_profile: str | None = None,
+        llm_model: str | None = None,
+        llm_reasoning_effort: str | None = None,
     ) -> AutonomousResearchLoopResult:
+        llm_execution = self._resolve_llm_execution(
+            llm_profile=llm_profile,
+            llm_model=llm_model,
+            llm_reasoning_effort=llm_reasoning_effort,
+        )
         ingestion = TopicIngestionService(self.openalex_client).ingest_topic(session=session, topic=topic, limit=limit)
 
         parsed_versions = 0
@@ -175,7 +191,13 @@ class AutonomousResearchLoopService:
             event_type="research_loop.started",
             source="autonomous_loop",
             message=f"Autonomous research loop started for topic '{topic}'.",
-            payload={"topic": topic, "limit": limit, "iterations": iterations, "use_worktree": use_worktree},
+            payload={
+                "topic": topic,
+                "limit": limit,
+                "iterations": iterations,
+                "use_worktree": use_worktree,
+                "llm": llm_execution,
+            },
         )
 
         worktree_path: str | None = None
@@ -196,7 +218,12 @@ class AutonomousResearchLoopService:
             execute_experiment_tasks(
                 session,
                 run_id=run.id,
-                runner=DeterministicLocalTaskRunner(),
+                runner=DeterministicLocalTaskRunner(
+                    llm_provider=llm_execution["provider"],
+                    llm_profile=llm_execution["profile"],
+                    llm_model=llm_execution["model"],
+                    llm_reasoning_effort=llm_execution["reasoning_effort"],
+                ),
                 max_iterations=iterations,
             )
         )
@@ -235,6 +262,7 @@ class AutonomousResearchLoopService:
                     "result_count": result_count,
                     "snapshot_id": snapshot.id,
                     "lead_paper_id": lead_paper.id,
+                    "llm": llm_execution,
                 },
                 sort_keys=True,
             ),
@@ -247,7 +275,7 @@ class AutonomousResearchLoopService:
             event_type="research_loop.completed",
             source="autonomous_loop",
             message=f"Autonomous research loop completed for topic '{topic}'.",
-            payload={"topic": topic, "run_id": run.id},
+            payload={"topic": topic, "run_id": run.id, "llm": llm_execution},
         )
         bundle = write_run_artifact_bundle(session, run.id)
 
@@ -272,10 +300,23 @@ class AutonomousResearchLoopService:
             used_worktree=use_worktree,
             worktree_path=worktree_path,
             artifact_dir=bundle["artifact_dir"],
+            llm_provider=llm_execution["provider"],
+            llm_profile=llm_execution["profile"],
+            llm_model=llm_execution["model"],
+            llm_reasoning_effort=llm_execution["reasoning_effort"],
             summary=summary,
         )
 
-    def continue_run(self, session: Session, *, run_id: int, iterations: int) -> AutonomousResearchLoopResult:
+    def continue_run(
+        self,
+        session: Session,
+        *,
+        run_id: int,
+        iterations: int,
+        llm_profile: str | None = None,
+        llm_model: str | None = None,
+        llm_reasoning_effort: str | None = None,
+    ) -> AutonomousResearchLoopResult:
         from fars_kg.services.repository import (
             build_paper_draft,
             build_research_report,
@@ -299,10 +340,21 @@ class AutonomousResearchLoopService:
             raise ValueError(f"Run {run_id} lead paper not found")
 
         iteration_count_before = len(run.iterations)
+        llm_execution = self._resolve_llm_execution(
+            llm_profile=llm_profile,
+            llm_model=llm_model,
+            llm_reasoning_effort=llm_reasoning_effort,
+        )
+
         execute_experiment_tasks(
             session,
             run_id=run.id,
-            runner=DeterministicLocalTaskRunner(),
+            runner=DeterministicLocalTaskRunner(
+                llm_provider=llm_execution["provider"],
+                llm_profile=llm_execution["profile"],
+                llm_model=llm_execution["model"],
+                llm_reasoning_effort=llm_execution["reasoning_effort"],
+            ),
             max_iterations=iterations,
         )
         iteration_count_after = len(list_iterations(session, run.id))
@@ -324,7 +376,11 @@ class AutonomousResearchLoopService:
             event_type="research_loop.continued",
             source="autonomous_loop",
             message=f"Autonomous research loop continued with {iteration_count_after - iteration_count_before} new iterations.",
-            payload={"new_iterations": iteration_count_after - iteration_count_before, "total_iterations": iteration_count_after},
+            payload={
+                "new_iterations": iteration_count_after - iteration_count_before,
+                "total_iterations": iteration_count_after,
+                "llm": llm_execution,
+            },
         )
         update_research_run_result(
             session,
@@ -344,6 +400,7 @@ class AutonomousResearchLoopService:
                     "result_count": len(results),
                     "snapshot_id": snapshot.id,
                     "lead_paper_id": lead_paper.id,
+                    "llm": llm_execution,
                 },
                 sort_keys=True,
             ),
@@ -373,6 +430,10 @@ class AutonomousResearchLoopService:
             used_worktree=bool(run.worktree_path),
             worktree_path=run.worktree_path,
             artifact_dir=bundle["artifact_dir"],
+            llm_provider=llm_execution["provider"],
+            llm_profile=llm_execution["profile"],
+            llm_model=llm_execution["model"],
+            llm_reasoning_effort=llm_execution["reasoning_effort"],
             summary=summary,
         )
 
@@ -386,7 +447,15 @@ class AutonomousResearchLoopService:
         use_worktree: bool = False,
         max_concurrency: int = 1,
         branch_prefix: str | None = None,
+        llm_profile: str | None = None,
+        llm_model: str | None = None,
+        llm_reasoning_effort: str | None = None,
     ) -> BatchAutonomousResearchLoopResult:
+        llm_execution = self._resolve_llm_execution(
+            llm_profile=llm_profile,
+            llm_model=llm_model,
+            llm_reasoning_effort=llm_reasoning_effort,
+        )
         normalized_topics = self._normalize_topics(topics)
         if not normalized_topics:
             raise ValueError("At least one non-empty topic is required")
@@ -406,6 +475,7 @@ class AutonomousResearchLoopService:
                     iterations=iterations,
                     use_worktree=use_worktree,
                     branch_prefix=branch_prefix,
+                    llm_execution=llm_execution,
                 )
         else:
             with ThreadPoolExecutor(max_workers=requested_concurrency) as executor:
@@ -419,6 +489,7 @@ class AutonomousResearchLoopService:
                         iterations=iterations,
                         use_worktree=use_worktree,
                         branch_prefix=branch_prefix,
+                        llm_execution=llm_execution,
                     ): index
                     for index, topic in enumerate(normalized_topics)
                 }
@@ -450,6 +521,7 @@ class AutonomousResearchLoopService:
                     iterations=iterations,
                     use_worktree=use_worktree,
                     branch_prefix=branch_prefix,
+                    llm_execution=llm_execution,
                 )
                 items_by_index[index] = retried
 
@@ -465,6 +537,7 @@ class AutonomousResearchLoopService:
                 "requested_concurrency": requested_concurrency,
                 "completed_count": completed_count,
                 "failed_count": failed_count,
+                "llm": llm_execution,
                 "items": [asdict(item) for item in items],
                 "reconciliation": asdict(reconciliation),
             },
@@ -476,6 +549,10 @@ class AutonomousResearchLoopService:
             requested_concurrency=requested_concurrency,
             completed_count=completed_count,
             failed_count=failed_count,
+            llm_provider=llm_execution["provider"],
+            llm_profile=llm_execution["profile"],
+            llm_model=llm_execution["model"],
+            llm_reasoning_effort=llm_execution["reasoning_effort"],
             items=items,
             reconciliation=reconciliation,
             artifact=artifact,
@@ -491,6 +568,7 @@ class AutonomousResearchLoopService:
         iterations: int,
         use_worktree: bool,
         branch_prefix: str | None,
+        llm_execution: dict[str, str],
     ) -> BatchLoopItemResult:
         branch_name = self._build_batch_branch_name(index=index, topic=topic, branch_prefix=branch_prefix)
         try:
@@ -502,6 +580,9 @@ class AutonomousResearchLoopService:
                     iterations=iterations,
                     branch_name=branch_name,
                     use_worktree=use_worktree,
+                    llm_profile=llm_execution["profile"],
+                    llm_model=llm_execution["model"],
+                    llm_reasoning_effort=llm_execution["reasoning_effort"],
                 )
             return BatchLoopItemResult(
                 topic=topic,
@@ -702,6 +783,37 @@ class AutonomousResearchLoopService:
             return float(value)
         except ValueError:
             return None
+
+    @staticmethod
+    def _resolve_llm_execution(
+        *,
+        llm_profile: str | None = None,
+        llm_model: str | None = None,
+        llm_reasoning_effort: str | None = None,
+    ) -> dict[str, str]:
+        profile = (llm_profile or "frontier").strip().lower()
+        if profile not in {"frontier", "standard", "spark", "custom"}:
+            profile = "frontier"
+
+        profile_models = {
+            "frontier": os.getenv("OMX_DEFAULT_FRONTIER_MODEL", "gpt-5.4"),
+            "standard": os.getenv("OMX_DEFAULT_STANDARD_MODEL", os.getenv("OMX_DEFAULT_FRONTIER_MODEL", "gpt-5.4-mini")),
+            "spark": os.getenv("OMX_DEFAULT_SPARK_MODEL", "gpt-5.3-codex-spark"),
+            "custom": llm_model.strip() if llm_model else os.getenv("OMX_DEFAULT_FRONTIER_MODEL", "gpt-5.4"),
+        }
+        model = (llm_model or "").strip() or profile_models.get(profile, profile_models["frontier"])
+
+        default_reasoning = "low" if profile == "spark" else "high"
+        reasoning_effort = (llm_reasoning_effort or "").strip().lower() or default_reasoning
+        if reasoning_effort not in {"low", "medium", "high", "xhigh"}:
+            reasoning_effort = default_reasoning
+
+        return {
+            "provider": "codex",
+            "profile": profile,
+            "model": model,
+            "reasoning_effort": reasoning_effort,
+        }
 
     def _write_batch_artifact_bundle(self, *, kind: str, payload: dict) -> BatchArtifactBundle:
         batch_id = uuid.uuid4().hex[:12]

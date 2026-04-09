@@ -220,6 +220,12 @@ def test_health_endpoint(tmp_path: Path) -> None:
     assert info_payload["artifacts_root"] == ".artifacts"
     assert info_payload["request_id_header"] == "X-Request-ID"
     assert info_payload["request_logging_enabled"] is True
+    assert info_payload["llm_provider"] == "codex"
+    assert info_payload["llm_default_profile"] == "frontier"
+    assert info_payload["llm_frontier_model"]
+    assert info_payload["llm_standard_model"]
+    assert info_payload["llm_spark_model"]
+    assert info_payload["llm_default_reasoning_effort"] in {"low", "medium", "high", "xhigh"}
 
 
 def test_console_ui_routes(tmp_path: Path) -> None:
@@ -303,6 +309,14 @@ def test_console_ui_routes(tmp_path: Path) -> None:
     body = console.text
     assert "FARS Research Console" in body
     assert "research-loops/run" in body
+    assert "Auto experiment run with Codex LLM config." in body
+    assert "llm profile: frontier" in body
+    assert "model (auto from profile if empty)" in body
+    assert "Continue Auto Experiment Run" in body
+    assert "continue-submit" in body
+    assert "const llmDefaults" in body
+    assert "loadLlmDefaults" in body
+    assert "/system/info" in body
     assert "const API = \"/api\"" in body
     assert "Graph Viewer" in body
     assert "Paper Explorer" in body
@@ -762,7 +776,15 @@ def test_autonomous_research_loop_without_worktree(tmp_path: Path) -> None:
     client = build_client(tmp_path)
     response = client.post(
         "/api/research-loops/run",
-        json={"topic": "transformers", "limit": 2, "iterations": 3, "use_worktree": False},
+        json={
+            "topic": "transformers",
+            "limit": 2,
+            "iterations": 3,
+            "use_worktree": False,
+            "llm_profile": "standard",
+            "llm_model": "gpt-5.4-mini",
+            "llm_reasoning_effort": "medium",
+        },
     )
     assert response.status_code == 200
     payload = response.json()
@@ -778,6 +800,10 @@ def test_autonomous_research_loop_without_worktree(tmp_path: Path) -> None:
     assert payload["experiment_task_count"] >= 3
     assert payload["iteration_count"] == 3
     assert payload["used_worktree"] is False
+    assert payload["llm_provider"] == "codex"
+    assert payload["llm_profile"] == "standard"
+    assert payload["llm_model"] == "gpt-5.4-mini"
+    assert payload["llm_reasoning_effort"] == "medium"
     assert "Autonomous loop completed" in payload["summary"]
 
     hypotheses = client.get(f"/api/runs/{payload['run_id']}/hypotheses")
@@ -909,11 +935,16 @@ def test_autonomous_research_loop_without_worktree(tmp_path: Path) -> None:
     assert runs.status_code == 200
     assert len(runs.json()) >= 1
 
-    continued = client.post(f"/api/research-loops/{payload['run_id']}/continue", json={"iterations": 2})
+    continued = client.post(
+        f"/api/research-loops/{payload['run_id']}/continue",
+        json={"iterations": 2, "llm_profile": "spark", "llm_reasoning_effort": "low"},
+    )
     assert continued.status_code == 200
     continued_payload = continued.json()
     assert continued_payload["run_id"] == payload["run_id"]
     assert continued_payload["iteration_count"] == 5
+    assert continued_payload["llm_profile"] == "spark"
+    assert continued_payload["llm_reasoning_effort"] == "low"
 
 
 def test_batch_research_loop_orchestration_and_reconciliation(tmp_path: Path) -> None:
@@ -927,6 +958,9 @@ def test_batch_research_loop_orchestration_and_reconciliation(tmp_path: Path) ->
             "use_worktree": False,
             "max_concurrency": 1,
             "branch_prefix": "batch-test",
+            "llm_profile": "frontier",
+            "llm_model": "gpt-5.4",
+            "llm_reasoning_effort": "high",
         },
     )
     assert response.status_code == 200
@@ -936,6 +970,10 @@ def test_batch_research_loop_orchestration_and_reconciliation(tmp_path: Path) ->
     assert payload["requested_concurrency"] == 1
     assert payload["completed_count"] == 2
     assert payload["failed_count"] == 0
+    assert payload["llm_provider"] == "codex"
+    assert payload["llm_profile"] == "frontier"
+    assert payload["llm_model"] == "gpt-5.4"
+    assert payload["llm_reasoning_effort"] == "high"
     assert len(payload["items"]) == 2
 
     for item in payload["items"]:

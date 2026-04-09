@@ -67,4 +67,10 @@ def system_info(request: Request) -> SystemInfoResponse:
         worktree_root=settings.worktree_root,
         request_id_header=settings.request_id_header,
         request_logging_enabled=settings.enable_request_logging,
+        llm_provider=settings.llm_provider,
+        llm_default_profile=settings.llm_default_profile,
+        llm_frontier_model=settings.llm_frontier_model,
+        llm_standard_model=settings.llm_standard_model,
+        llm_spark_model=settings.llm_spark_model,
+        llm_default_reasoning_effort=settings.llm_default_reasoning_effort,
     )

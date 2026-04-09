@@ -1,6 +1,8 @@
 from functools import lru_cache
+import os
 
 from fars_kg import __version__
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -28,6 +30,14 @@ class Settings(BaseSettings):
     grobid_timeout_seconds: float = 60.0
     repo_root: str = "."
     worktree_root: str = ".worktrees"
+    llm_provider: str = "codex"
+    llm_default_profile: str = "frontier"
+    llm_frontier_model: str = Field(default_factory=lambda: os.getenv("OMX_DEFAULT_FRONTIER_MODEL", "gpt-5.4"))
+    llm_standard_model: str = Field(
+        default_factory=lambda: os.getenv("OMX_DEFAULT_STANDARD_MODEL", os.getenv("OMX_DEFAULT_FRONTIER_MODEL", "gpt-5.4-mini"))
+    )
+    llm_spark_model: str = Field(default_factory=lambda: os.getenv("OMX_DEFAULT_SPARK_MODEL", "gpt-5.3-codex-spark"))
+    llm_default_reasoning_effort: str = "high"
 
     model_config = SettingsConfigDict(
         env_prefix="FARS_",
