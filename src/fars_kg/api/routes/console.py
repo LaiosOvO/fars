@@ -438,12 +438,34 @@ machine translation</textarea></div>
         <h2>Runs</h2>
         <table>
           <thead>
-            <tr><th>ID</th><th>Status</th><th>LLM</th><th>Branch</th><th>Summary</th><th>Artifacts</th></tr>
+            <tr><th>ID</th><th>Status</th><th>LLM</th><th>Branch</th><th>Summary</th><th>Actions</th></tr>
           </thead>
           <tbody id="runs-body"><tr><td colspan="6">Loading...</td></tr></tbody>
         </table>
       </div>
       <div class="panel span-4">
+        <h2>Run Inspector</h2>
+        <div class="row">
+          <div class="c8"><input id="inspect-run-id" type="number" min="1" placeholder="run id" /></div>
+          <div class="c4"><button id="inspect-run-submit">Inspect</button></div>
+        </div>
+        <div class="row">
+          <div class="c12">
+            <div class="label">Selected Run</div>
+            <pre id="run-detail">No run selected.</pre>
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <div class="c12">
+            <div class="label">Latest Events</div>
+            <pre id="run-events">No run events loaded.</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="panel span-12">
         <h2>Graph Viewer</h2>
         <div class="row">
           <div class="c8"><input id="graph-paper-id" type="number" min="1" value="1" /></div>
@@ -476,6 +498,7 @@ machine translation</textarea></div>
   <script>
     const API = "{api_prefix}";
     const logEl = document.getElementById("log");
+    const CONSOLE_POLL_INTERVAL_MS = 15000;
     const llmDefaults = {{
       llm_provider: "codex",
       llm_default_profile: "frontier",
@@ -572,6 +595,8 @@ machine translation</textarea></div>
       return `<span class="tag ${{cls}}">${{status}}</span>`;
     }}
 
+    let selectedRunId = null;
+
     function parseRunLlm(run) {{
       try {{
         const payload = run.result_payload_json ? JSON.parse(run.result_payload_json) : null;
@@ -580,6 +605,54 @@ machine translation</textarea></div>
         return `${{llm.profile || "profile?"}} / ${{llm.model || "model?"}} / ${{llm.reasoning_effort || "reasoning?"}}`;
       }} catch (_err) {{
         return "-";
+      }}
+    }}
+
+    async function inspectRun(runId, silent=false) {{
+      try {{
+        const numericRunId = Number(runId);
+        if (!Number.isInteger(numericRunId) || numericRunId <= 0) {{
+          throw new Error("Provide a valid run id");
+        }}
+        selectedRunId = numericRunId;
+        document.getElementById("inspect-run-id").value = String(numericRunId);
+        const [run, status, events] = await Promise.all([
+          fetchJson(`${{API}}/runs/${{numericRunId}}`),
+          fetchJson(`${{API}}/runs/${{numericRunId}}/status`),
+          fetchJson(`${{API}}/runs/${{numericRunId}}/events`),
+        ]);
+        const llm = parseRunLlm(run);
+        document.getElementById("run-detail").textContent = JSON.stringify({{
+          id: run.id,
+          status: status.status,
+          summary: status.summary,
+          llm,
+          branch_name: run.branch_name,
+          worktree_path: run.worktree_path,
+          artifact_dir: run.artifact_dir,
+          report_title: run.report_title,
+          paper_draft_title: run.paper_draft_title,
+        }}, null, 2);
+        document.getElementById("run-events").textContent = JSON.stringify(
+          events.slice(-12).map((event) => ({{
+            time_created: event.time_created,
+            event_type: event.event_type,
+            status: event.status,
+            source: event.source,
+            message: event.message,
+          }})),
+          null,
+          2,
+        );
+        if (!silent) {{
+          log(`run ${{numericRunId}} inspected`, {{ status: status.status, llm }});
+        }}
+      }} catch (err) {{
+        document.getElementById("run-detail").textContent = "Run inspect failed: " + err.message;
+        document.getElementById("run-events").textContent = "Run events unavailable.";
+        if (!silent) {{
+          log("run inspect failed: " + err.message);
+        }}
       }}
     }}
 
@@ -603,14 +676,16 @@ machine translation</textarea></div>
       body.innerHTML = runs.map(run => {{
         const summary = run.result_summary ? run.result_summary.slice(0, 110) : "-";
         const llm = parseRunLlm(run);
+        const selected = selectedRunId === run.id ? ' style="background:#17223d"' : "";
         return `
-          <tr>
+          <tr${{selected}}>
             <td>${{run.id}}</td>
             <td>${{badge(run.status)}}</td>
             <td><code>${{llm}}</code></td>
             <td><code>${{run.branch_name || "-"}}</code></td>
             <td>${{summary}}</td>
             <td>
+              <button onclick="inspectRun(${{run.id}})">inspect</button> ·
               <a href="${{API}}/runs/${{run.id}}/report/download">report</a> ·
               <a href="${{API}}/runs/${{run.id}}/paper-draft/download">draft</a> ·
               <a href="${{API}}/runs/${{run.id}}/bundle/download">bundle</a>
@@ -618,6 +693,9 @@ machine translation</textarea></div>
           </tr>
         `;
       }}).join("");
+      if (selectedRunId && runs.some((run) => run.id === selectedRunId)) {{
+        inspectRun(selectedRunId, true).catch(() => {{}});
+      }}
     }}
 
     async function searchPapers() {{
@@ -827,6 +905,7 @@ machine translation</textarea></div>
     document.getElementById("run-submit").addEventListener("click", submitRun);
     document.getElementById("batch-submit").addEventListener("click", submitBatch);
     document.getElementById("continue-submit").addEventListener("click", submitContinue);
+    document.getElementById("inspect-run-submit").addEventListener("click", () => inspectRun(document.getElementById("inspect-run-id").value));
     document.getElementById("reconcile-submit").addEventListener("click", submitReconcile);
     document.getElementById("graph-load").addEventListener("click", loadGraph);
     document.getElementById("paper-search").addEventListener("click", () => searchPapers().catch(err => log("paper search failed: " + err.message)));
@@ -838,6 +917,12 @@ machine translation</textarea></div>
     Promise.all([refreshAll(), loadLlmDefaults()])
       .then(() => searchPapers())
       .catch(err => log("initial load failed: " + err.message));
+    setInterval(() => {{
+      refreshAll().catch(err => log("auto refresh failed: " + err.message));
+      if (selectedRunId) {{
+        inspectRun(selectedRunId, true).catch(() => {{}});
+      }}
+    }}, CONSOLE_POLL_INTERVAL_MS);
   </script>
 </body>
 </html>

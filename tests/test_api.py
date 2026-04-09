@@ -318,6 +318,12 @@ def test_console_ui_routes(tmp_path: Path) -> None:
     assert "model (auto from profile if empty)" in body
     assert "<th>LLM</th>" in body
     assert "parseRunLlm" in body
+    assert "Run Inspector" in body
+    assert 'id="run-detail"' in body
+    assert 'id="run-events"' in body
+    assert 'id="inspect-run-submit"' in body
+    assert "inspectRun(" in body
+    assert "const CONSOLE_POLL_INTERVAL_MS = 15000;" in body
     assert "Continue Auto Experiment Run" in body
     assert "continue-submit" in body
     assert "const llmDefaults" in body

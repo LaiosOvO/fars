@@ -102,6 +102,7 @@ Recent decisions affecting current work:
 - Enhancement: `/console` now provides Codex LLM profile/model/reasoning controls for single run, batch run, and continue-run auto experiments.
 - Enhancement: research-loop run/batch/continue APIs now accept and persist Codex LLM execution metadata (`profile/model/reasoning`) for experiment traceability.
 - Enhancement: `/console` now shows per-run Codex execution config inside the runs table for quick operator inspection.
+- Enhancement: `/console` now ships a live run inspector (selected run summary + latest events) and 15s operator polling.
 
 ### Pending Todos
 

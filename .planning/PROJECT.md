@@ -75,6 +75,7 @@ Turn papers from static PDFs into a structured, queryable, evidence-backed knowl
 - ✓ `/console` now includes a dedicated auto-experiment operator UI with Codex LLM profile/model/reasoning controls for run/batch/continue workflows — 2026-04-09
 - ✓ Research-loop APIs now accept Codex LLM execution config (`llm_profile`, `llm_model`, `llm_reasoning_effort`) and persist it into run events/payload metadata — 2026-04-09
 - ✓ `/console` runs table now surfaces per-run Codex execution config (profile/model/reasoning) for operator traceability — 2026-04-09
+- ✓ `/console` now includes a live run inspector with run status/events and 15s auto-refresh for operator monitoring — 2026-04-09
 
 ### Active
 
