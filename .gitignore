@@ -9,5 +9,7 @@ fars_kg.db
 htmlcov/
 dist/
 build/
+.artifacts/
+*.egg-info/
 .codex/
 .omx/

@@ -1,0 +1,21 @@
+services:
+  fars:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      FARS_ENVIRONMENT: ${FARS_ENVIRONMENT:-production}
+      FARS_DATABASE_URL: ${FARS_DATABASE_URL:-sqlite+pysqlite:////app/data/fars_kg.db}
+      FARS_DATABASE_BOOTSTRAP_MODE: ${FARS_DATABASE_BOOTSTRAP_MODE:-migrate}
+      FARS_ALEMBIC_CONFIG_PATH: ${FARS_ALEMBIC_CONFIG_PATH:-/app/alembic.ini}
+      FARS_ARTIFACTS_ROOT: ${FARS_ARTIFACTS_ROOT:-/app/.artifacts}
+      FARS_ENABLE_REQUEST_LOGGING: ${FARS_ENABLE_REQUEST_LOGGING:-true}
+      FARS_LOG_LEVEL: ${FARS_LOG_LEVEL:-INFO}
+    volumes:
+      - ./.artifacts:/app/.artifacts
+      - ./data:/app/data
+    restart: unless-stopped

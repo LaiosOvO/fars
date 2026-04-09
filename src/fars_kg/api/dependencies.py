@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from fars_kg.connectors.openalex import OpenAlexClientProtocol
 from fars_kg.db import DatabaseManager
 from fars_kg.parsers.base import ParserProtocol
+from fars_kg.worktree import GitWorktreeManager
 
 
 def get_db_manager(request: Request) -> DatabaseManager:
@@ -26,3 +27,7 @@ def get_openalex_client(request: Request) -> OpenAlexClientProtocol:
 
 def get_default_parser(request: Request) -> ParserProtocol:
     return request.app.state.default_parser
+
+
+def get_worktree_manager(request: Request) -> GitWorktreeManager:
+    return request.app.state.worktree_manager

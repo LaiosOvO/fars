@@ -14,4 +14,5 @@ def healthcheck() -> dict[str, str | bool]:
         "environment": settings.app_env,
         "version": settings.app_version,
         "debug": settings.debug,
+        "canonical_runtime": "fars_kg.api.app:app",
     }

@@ -49,6 +49,12 @@
 - **FLOW-02**: Experiment outputs can be written back into the knowledge layer.
 - **FLOW-03**: Multi-worktree execution can run independently from shared knowledge storage.
 
+### Runtime / Productization
+
+- **OPS-01**: API responses expose request identifiers for tracing.
+- **OPS-02**: Research runs emit durable audit events for execution transparency.
+- **OPS-03**: Artifact bundles export operational evidence such as events and checksummed manifests.
+
 ## Out of Scope
 
 | Feature | Reason |
@@ -62,27 +68,36 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| META-01 | Phase 1 | Pending |
-| META-02 | Phase 1 | Pending |
-| META-03 | Phase 1 | Pending |
-| PARS-01 | Phase 1 | Pending |
-| PARS-02 | Phase 1 | Pending |
-| PARS-03 | Phase 1 | Pending |
-| GRAPH-01 | Phase 1 | Pending |
-| GRAPH-02 | Phase 1 | Pending |
-| GRAPH-03 | Phase 1 | Pending |
-| API-01 | Phase 1 | Pending |
-| API-02 | Phase 1 | Pending |
-| API-03 | Phase 1 | Pending |
-| API-04 | Phase 1 | Pending |
-| TEST-01 | Phase 1 | Pending |
-| TEST-02 | Phase 1 | Pending |
+| META-01 | Phase 1 | Complete |
+| META-02 | Phase 1 | Complete |
+| META-03 | Phase 1 | Complete |
+| PARS-01 | Phase 1 | Complete |
+| PARS-02 | Phase 1 | Complete |
+| PARS-03 | Phase 1 | Complete |
+| GRAPH-01 | Phase 1 | Complete |
+| GRAPH-02 | Phase 1 | Complete |
+| GRAPH-03 | Phase 1 | Complete |
+| API-01 | Phase 1 | Complete |
+| API-02 | Phase 1 | Complete |
+| API-03 | Phase 1 | Complete |
+| API-04 | Phase 1 | Complete |
+| TEST-01 | Phase 1 | Complete |
+| TEST-02 | Phase 1 | Complete |
+| SEM-01 | Phase 2 | Complete |
+| SEM-02 | Phase 2 | Complete |
+| SEM-03 | Phase 2 | Complete |
+| FLOW-01 | Phase 3 | Complete |
+| FLOW-02 | Phase 3 | Complete |
+| FLOW-03 | Phase 4 | Complete |
+| OPS-01 | Phase 5 | Complete |
+| OPS-02 | Phase 5 | Complete |
+| OPS-03 | Phase 5 | Complete |
 
 **Coverage:**
-- v1 requirements: 15 total
-- Mapped to phases: 15
+- v1+v2+ops requirements: 24 total
+- Mapped to phases: 24
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-08*
-*Last updated: 2026-04-08 after initial GSD setup*
+*Last updated: 2026-04-08 after workflow + productization verification*

@@ -32,6 +32,11 @@ class Paper(TimestampMixin, Base):
     primary_source: Mapped[str | None] = mapped_column(String(64))
 
     versions: Mapped[list[PaperVersion]] = relationship(back_populates="paper", cascade="all, delete-orphan")
+    method_links: Mapped[list[PaperMethodLink]] = relationship(back_populates="paper", cascade="all, delete-orphan")
+    dataset_links: Mapped[list[PaperDatasetLink]] = relationship(back_populates="paper", cascade="all, delete-orphan")
+    metric_links: Mapped[list[PaperMetricLink]] = relationship(back_populates="paper", cascade="all, delete-orphan")
+    evidence_snapshots: Mapped[list[EvidenceSnapshot]] = relationship(back_populates="paper", cascade="all, delete-orphan")
+    experiment_results: Mapped[list[ExperimentResult]] = relationship(back_populates="paper", cascade="all, delete-orphan")
     outgoing_edges: Mapped[list[PaperEdge]] = relationship(
         back_populates="src_paper",
         cascade="all, delete-orphan",
@@ -138,3 +143,194 @@ class PaperEdge(TimestampMixin, Base):
     src_paper: Mapped[Paper] = relationship(back_populates="outgoing_edges", foreign_keys=[src_paper_id])
     dst_paper: Mapped[Paper] = relationship(back_populates="incoming_edges", foreign_keys=[dst_paper_id])
     evidence_chunk: Mapped[PaperChunk | None] = relationship()
+
+
+class Method(TimestampMixin, Base):
+    __tablename__ = "method"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(256), nullable=False, unique=True)
+    paper_links: Mapped[list[PaperMethodLink]] = relationship(back_populates="method", cascade="all, delete-orphan")
+    experiment_results: Mapped[list[ExperimentResult]] = relationship(back_populates="method")
+
+
+class Dataset(TimestampMixin, Base):
+    __tablename__ = "dataset"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(256), nullable=False, unique=True)
+    paper_links: Mapped[list[PaperDatasetLink]] = relationship(back_populates="dataset", cascade="all, delete-orphan")
+    experiment_results: Mapped[list[ExperimentResult]] = relationship(back_populates="dataset")
+
+
+class Metric(TimestampMixin, Base):
+    __tablename__ = "metric"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(256), nullable=False, unique=True)
+    paper_links: Mapped[list[PaperMetricLink]] = relationship(back_populates="metric", cascade="all, delete-orphan")
+    experiment_results: Mapped[list[ExperimentResult]] = relationship(back_populates="metric")
+
+
+class PaperMethodLink(TimestampMixin, Base):
+    __tablename__ = "paper_method_link"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    paper_id: Mapped[int] = mapped_column(ForeignKey("paper.id", ondelete="CASCADE"), nullable=False)
+    method_id: Mapped[int] = mapped_column(ForeignKey("method.id", ondelete="CASCADE"), nullable=False)
+
+    paper: Mapped[Paper] = relationship(back_populates="method_links")
+    method: Mapped[Method] = relationship(back_populates="paper_links")
+
+
+class PaperDatasetLink(TimestampMixin, Base):
+    __tablename__ = "paper_dataset_link"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    paper_id: Mapped[int] = mapped_column(ForeignKey("paper.id", ondelete="CASCADE"), nullable=False)
+    dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id", ondelete="CASCADE"), nullable=False)
+
+    paper: Mapped[Paper] = relationship(back_populates="dataset_links")
+    dataset: Mapped[Dataset] = relationship(back_populates="paper_links")
+
+
+class PaperMetricLink(TimestampMixin, Base):
+    __tablename__ = "paper_metric_link"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    paper_id: Mapped[int] = mapped_column(ForeignKey("paper.id", ondelete="CASCADE"), nullable=False)
+    metric_id: Mapped[int] = mapped_column(ForeignKey("metric.id", ondelete="CASCADE"), nullable=False)
+
+    paper: Mapped[Paper] = relationship(back_populates="metric_links")
+    metric: Mapped[Metric] = relationship(back_populates="paper_links")
+
+
+class EvidenceSnapshot(TimestampMixin, Base):
+    __tablename__ = "evidence_snapshot"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    paper_id: Mapped[int] = mapped_column(ForeignKey("paper.id", ondelete="CASCADE"), nullable=False)
+    topic: Mapped[str | None] = mapped_column(String(512))
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+    paper: Mapped[Paper] = relationship(back_populates="evidence_snapshots")
+    runs: Mapped[list[ResearchRun]] = relationship(back_populates="snapshot", cascade="all, delete-orphan")
+
+
+class ResearchRun(TimestampMixin, Base):
+    __tablename__ = "research_run"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    snapshot_id: Mapped[int] = mapped_column(ForeignKey("evidence_snapshot.id", ondelete="CASCADE"), nullable=False)
+    branch_name: Mapped[str | None] = mapped_column(String(256))
+    worktree_path: Mapped[str | None] = mapped_column(String(2048))
+    status: Mapped[str] = mapped_column(String(64), default="created", nullable=False)
+    result_summary: Mapped[str | None] = mapped_column(Text)
+    result_payload_json: Mapped[str | None] = mapped_column(Text)
+    report_title: Mapped[str | None] = mapped_column(String(512))
+    report_markdown: Mapped[str | None] = mapped_column(Text)
+    report_figure_path: Mapped[str | None] = mapped_column(String(2048))
+    paper_draft_title: Mapped[str | None] = mapped_column(String(512))
+    paper_draft_markdown: Mapped[str | None] = mapped_column(Text)
+    artifact_dir: Mapped[str | None] = mapped_column(String(2048))
+
+    snapshot: Mapped[EvidenceSnapshot] = relationship(back_populates="runs")
+    experiment_results: Mapped[list[ExperimentResult]] = relationship(back_populates="run", cascade="all, delete-orphan")
+    hypotheses: Mapped[list[ResearchHypothesis]] = relationship(back_populates="run", cascade="all, delete-orphan")
+    experiment_plans: Mapped[list[ExperimentPlan]] = relationship(back_populates="run", cascade="all, delete-orphan")
+    experiment_tasks: Mapped[list[ExperimentTask]] = relationship(back_populates="run", cascade="all, delete-orphan")
+    iterations: Mapped[list[ResearchIteration]] = relationship(back_populates="run", cascade="all, delete-orphan")
+    events: Mapped[list[ResearchRunEvent]] = relationship(back_populates="run", cascade="all, delete-orphan")
+
+
+class ExperimentResult(TimestampMixin, Base):
+    __tablename__ = "experiment_result"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("research_run.id", ondelete="CASCADE"), nullable=False)
+    paper_id: Mapped[int] = mapped_column(ForeignKey("paper.id", ondelete="CASCADE"), nullable=False)
+    method_id: Mapped[int | None] = mapped_column(ForeignKey("method.id", ondelete="SET NULL"))
+    dataset_id: Mapped[int | None] = mapped_column(ForeignKey("dataset.id", ondelete="SET NULL"))
+    metric_id: Mapped[int | None] = mapped_column(ForeignKey("metric.id", ondelete="SET NULL"))
+    value: Mapped[str] = mapped_column(String(128), nullable=False)
+    source: Mapped[str] = mapped_column(String(64), default="manual", nullable=False)
+    notes: Mapped[str | None] = mapped_column(Text)
+
+    run: Mapped[ResearchRun] = relationship(back_populates="experiment_results")
+    paper: Mapped[Paper] = relationship(back_populates="experiment_results")
+    method: Mapped[Method | None] = relationship(back_populates="experiment_results")
+    dataset: Mapped[Dataset | None] = relationship(back_populates="experiment_results")
+    metric: Mapped[Metric | None] = relationship(back_populates="experiment_results")
+
+
+class ResearchHypothesis(TimestampMixin, Base):
+    __tablename__ = "research_hypothesis"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("research_run.id", ondelete="CASCADE"), nullable=False)
+    paper_id: Mapped[int] = mapped_column(ForeignKey("paper.id", ondelete="CASCADE"), nullable=False)
+    statement: Mapped[str] = mapped_column(Text, nullable=False)
+    rationale: Mapped[str | None] = mapped_column(Text)
+
+    run: Mapped[ResearchRun] = relationship(back_populates="hypotheses")
+    paper: Mapped[Paper] = relationship()
+
+
+class ExperimentPlan(TimestampMixin, Base):
+    __tablename__ = "experiment_plan"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("research_run.id", ondelete="CASCADE"), nullable=False)
+    paper_id: Mapped[int] = mapped_column(ForeignKey("paper.id", ondelete="CASCADE"), nullable=False)
+    title: Mapped[str] = mapped_column(String(512), nullable=False)
+    steps_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+    run: Mapped[ResearchRun] = relationship(back_populates="experiment_plans")
+    paper: Mapped[Paper] = relationship()
+    tasks: Mapped[list[ExperimentTask]] = relationship(back_populates="plan", cascade="all, delete-orphan")
+
+
+class ExperimentTask(TimestampMixin, Base):
+    __tablename__ = "experiment_task"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("research_run.id", ondelete="CASCADE"), nullable=False)
+    plan_id: Mapped[int] = mapped_column(ForeignKey("experiment_plan.id", ondelete="CASCADE"), nullable=False)
+    paper_id: Mapped[int] = mapped_column(ForeignKey("paper.id", ondelete="CASCADE"), nullable=False)
+    title: Mapped[str] = mapped_column(String(512), nullable=False)
+    task_type: Mapped[str] = mapped_column(String(64), default="benchmark", nullable=False)
+    config_json: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), default="pending", nullable=False)
+
+    run: Mapped[ResearchRun] = relationship(back_populates="experiment_tasks")
+    plan: Mapped[ExperimentPlan] = relationship(back_populates="tasks")
+    paper: Mapped[Paper] = relationship()
+
+
+class ResearchIteration(TimestampMixin, Base):
+    __tablename__ = "research_iteration"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("research_run.id", ondelete="CASCADE"), nullable=False)
+    iteration_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    plan_title: Mapped[str] = mapped_column(String(512), nullable=False)
+    metric_name: Mapped[str | None] = mapped_column(String(128))
+    metric_value: Mapped[str | None] = mapped_column(String(128))
+    decision: Mapped[str] = mapped_column(String(32), nullable=False)
+    rationale: Mapped[str | None] = mapped_column(Text)
+
+    run: Mapped[ResearchRun] = relationship(back_populates="iterations")
+
+
+class ResearchRunEvent(TimestampMixin, Base):
+    __tablename__ = "research_run_event"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("research_run.id", ondelete="CASCADE"), nullable=False)
+    event_type: Mapped[str] = mapped_column(String(128), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), default="info", nullable=False)
+    source: Mapped[str] = mapped_column(String(64), default="system", nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    payload_json: Mapped[str | None] = mapped_column(Text)
+
+    run: Mapped[ResearchRun] = relationship(back_populates="events")
