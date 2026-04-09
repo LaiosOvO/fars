@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from urllib.parse import parse_qs
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 from fars_kg.api.auth import OPERATOR_SESSION_COOKIE, operator_access_granted
-from fars_kg.services.repository import list_runs
+from fars_kg.services.repository import list_recent_run_events, list_runs
 from fars_kg.services.research_loop import AutonomousResearchLoopService
 
 router = APIRouter(tags=["console"], include_in_schema=False)
@@ -49,6 +50,33 @@ def fars_live_data(request: Request, limit: int = 8) -> JSONResponse:
             }
             for run in runs
         ],
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "counts": {
+            "deployments": len(batches),
+            "research_runs": len(runs),
+        },
+    }
+    return JSONResponse(payload)
+
+
+@router.get("/fars/events", response_class=JSONResponse, include_in_schema=False)
+def fars_live_events(request: Request, limit: int = 16) -> JSONResponse:
+    db = request.app.state.db
+    capped_limit = max(1, min(limit, 50))
+    with db.session() as session:
+        events = list_recent_run_events(session, limit=capped_limit)
+    payload = {
+        "events": [
+            {
+                "run_id": event.run_id,
+                "event_type": event.event_type,
+                "status": event.status,
+                "source": event.source,
+                "time_created": event.time_created.isoformat(),
+            }
+            for event in events
+        ],
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }
     return JSONResponse(payload)
 
@@ -1149,13 +1177,22 @@ def _fars_html(api_prefix: str) -> str:
     <section class="section">
       <div class="section-head">
         <h2>RESEARCH RUNS</h2>
-        <div class="links"><a href="/console">Advanced operations in console →</a></div>
+        <div class="links">
+          <span id="last-updated" class="mini-pill">Last updated: --</span>
+          <a href="/console">Advanced operations in console →</a>
+        </div>
       </div>
       <div class="grid-2">
         <div style="grid-column:1 / -1">
           <div id="runs-body" class="loading">{_loading_indicator_html("Loading research runs...")}</div>
         </div>
       </div>
+    </section>
+    <section class="section">
+      <div class="section-head">
+        <h2>LATEST RUN EVENTS</h2>
+      </div>
+      <div id="events-body" class="loading">{_loading_indicator_html("Loading latest run events...")}</div>
     </section>
     <footer class="footer">
       <div class="footer-brand">
@@ -1197,6 +1234,18 @@ def _fars_html(api_prefix: str) -> str:
 
     let lastFocusedElement = null;
 
+    function formatIso(value) {{
+      if (!value) return "-";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return value;
+      return date.toLocaleString();
+    }}
+
+    function updateLastUpdated(value) {{
+      const node = document.getElementById("last-updated");
+      node.textContent = `Last updated: ${{formatIso(value)}}`;
+    }}
+
     async function refreshPublicData() {{
       const [readiness, publicData] = await Promise.all([
         fetchJson(`${{API}}/health/readiness`),
@@ -1225,6 +1274,7 @@ def _fars_html(api_prefix: str) -> str:
             }}</div>
           </article>`).join("")}}
       </div>`;
+      updateLastUpdated(publicData.generated_at);
     }}
 
     async function refreshRuns() {{
@@ -1245,10 +1295,34 @@ def _fars_html(api_prefix: str) -> str:
             <div class="summary">Research run status is visible here. Full details remain in the operator console.</div>
           </article>`).join("")}}
       </div>`;
+      updateLastUpdated(data.generated_at);
+    }}
+
+    async function refreshEvents() {{
+      const data = await fetchJson(`/fars/events?limit=16`);
+      const events = data.events || [];
+      const body = document.getElementById("events-body");
+      if (!events.length) {{
+        body.innerHTML = '<div class="loading"><span>No run events yet.</span></div>';
+        updateLastUpdated(data.generated_at);
+        return;
+      }}
+      body.innerHTML = `<div class="card-grid">
+        ${{events.map(event => `
+          <article class="card">
+            <div class="card-title">Run #${{event.run_id}} ${{fmtStatus(event.status)}}</div>
+            <div class="meta-strip">
+              <span class="mini-pill">${{event.event_type}}</span>
+              <span class="mini-pill">${{event.source}}</span>
+            </div>
+            <div class="summary">${{formatIso(event.time_created)}}</div>
+          </article>`).join("")}}
+      </div>`;
+      updateLastUpdated(data.generated_at);
     }}
 
     async function refreshLive() {{
-      await Promise.all([refreshPublicData(), refreshRuns()]);
+      await Promise.all([refreshPublicData(), refreshRuns(), refreshEvents()]);
     }}
 
     function setMenuOpen(open) {{

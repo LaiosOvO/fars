@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-04-08)
 Phase: foundation, semantic enrichment, workflow surfaces, and cleanup complete
 Plan: full verification complete
 Status: Complete
-Last activity: 2026-04-08 — Gated operator GET APIs and split /fars to a dedicated public feed; verified 50 passing tests
+Last activity: 2026-04-09 — Added public `/fars/events` sanitized feed and restored live last-updated/event panel on `/fars`; verified 50 passing tests
 
 Progress: [██████████] 100%
 
@@ -96,6 +96,7 @@ Recent decisions affecting current work:
 - Enhancement: public `/fars` now reads from `/fars/data`, preserving public visibility without leaking operator API surfaces.
 - Enhancement: public `/fars` no longer renders links that point at operator-gated endpoints.
 - Enhancement: public `/fars/data` is now sanitized to omit operator-only fields such as branch name and full result summary.
+- Enhancement: public `/fars` now reads a sanitized `/fars/events` feed and displays latest run events with a last-updated indicator.
 
 ### Pending Todos
 

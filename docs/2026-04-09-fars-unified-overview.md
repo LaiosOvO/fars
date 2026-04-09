@@ -418,6 +418,7 @@ operator view：
 - 当开启 token 时：
   - `/fars` 保持公开
   - `/fars/data` 保持公开
+  - `/fars/events` 保持公开（脱敏事件流）
   - operator API 被保护
 
 而且 `/fars/data` 已做脱敏，不再暴露：
@@ -536,6 +537,7 @@ make db-current
 - `GET /api/health/readiness`
 - `GET /api/system/info`
 - `GET /fars/data`
+- `GET /fars/events`
 
 ## 8.2 论文与图谱
 
@@ -797,4 +799,3 @@ make db-current
 ## 12. 当前一句话状态
 
 > 当前 FARS 已经从“需求分析”进入到“可运行、可展示、可验证、可扩展”的知识层底座阶段：公共页 `/fars`、操作台 `/console`、论文知识层、run/batch/reconcile、artifact 与 operator boundary 都已经落地，并且具备本地验证能力。
-

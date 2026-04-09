@@ -272,13 +272,14 @@ def test_console_ui_routes(tmp_path: Path) -> None:
     assert ".hero-image:hover" in fars_body
     assert ".footer a:hover" in fars_body
     assert "action-bar" not in fars_body
-    assert "last-updated" not in fars_body
+    assert "last-updated" in fars_body
     assert "Terms of Service" in fars_body
     assert "Join Us" in fars_body
     assert '.footer a::after' in fars_body
     assert "Public live view for autonomous research progress." in fars_body
     assert "PAPER INSPECTION" not in fars_body
-    assert "Latest Run Events" not in fars_body
+    assert "LATEST RUN EVENTS" in fars_body
+    assert "/fars/events?limit=16" in fars_body
     assert "Open advanced operator console" not in fars_body
     assert 'id="k-ready"' not in fars_body
     assert "fars-live.analemma.ai/images/fars/live-completed-card.jpg" not in fars_body
@@ -316,12 +317,30 @@ def test_console_operator_token_gate_and_login(tmp_path: Path) -> None:
     public_data = client.get("/fars/data")
     assert public_data.status_code == 200
     payload = public_data.json()
+    assert payload["generated_at"]
+    assert payload["counts"]["deployments"] >= 0
+    assert payload["counts"]["research_runs"] >= 0
     if payload["research_runs"]:
         assert "branch_name" not in payload["research_runs"][0]
         assert "summary" not in payload["research_runs"][0]
         assert "has_artifact" not in payload["research_runs"][0]
     if payload["deployments"]:
         assert "exists" not in payload["deployments"][0]
+
+    public_events = client.get("/fars/events")
+    assert public_events.status_code == 200
+    events_payload = public_events.json()
+    assert events_payload["generated_at"]
+    assert isinstance(events_payload["events"], list)
+    if events_payload["events"]:
+        event = events_payload["events"][0]
+        assert "run_id" in event
+        assert "event_type" in event
+        assert "status" in event
+        assert "source" in event
+        assert "time_created" in event
+        assert "message" not in event
+        assert "payload_json" not in event
 
     denied = client.post(
         "/api/research-loops/batch-run",

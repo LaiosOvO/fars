@@ -793,6 +793,16 @@ def list_run_events(session: Session, run_id: int) -> list[ResearchRunEvent]:
     return list(session.scalars(stmt).all())
 
 
+def list_recent_run_events(session: Session, *, limit: int = 20) -> list[ResearchRunEvent]:
+    capped_limit = max(1, min(limit, 200))
+    stmt = (
+        select(ResearchRunEvent)
+        .order_by(ResearchRunEvent.time_created.desc(), ResearchRunEvent.id.desc())
+        .limit(capped_limit)
+    )
+    return list(session.scalars(stmt).all())
+
+
 def get_system_counts(session: Session) -> dict:
     paper_count = session.scalar(select(func.count()).select_from(Paper)) or 0
     run_count = session.scalar(select(func.count()).select_from(ResearchRun)) or 0
