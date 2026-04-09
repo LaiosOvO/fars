@@ -394,6 +394,7 @@ public/live view：
 - latest run events
 - last-updated indicator
 - visible-count pills（deployments / runs / events）
+- refresh cadence + countdown indicator（15s live refresh）
 - mobile menu sheet
 - footer
 - public copy rhythm

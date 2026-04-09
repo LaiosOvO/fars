@@ -270,9 +270,15 @@ def test_console_ui_routes(tmp_path: Path) -> None:
     assert "Visible deployments:" in fars_body
     assert "Visible runs:" in fars_body
     assert "Visible events:" in fars_body
+    assert "Refresh: 15s" in fars_body
+    assert "Next refresh:" in fars_body
     assert 'id="deployments-count"' in fars_body
     assert 'id="runs-count"' in fars_body
     assert 'id="events-count"' in fars_body
+    assert 'id="refresh-cadence"' in fars_body
+    assert 'id="refresh-countdown"' in fars_body
+    assert "const REFRESH_INTERVAL_MS = 15000;" in fars_body
+    assert "ensureRefreshTicker" in fars_body
     assert "public progress tracking" in fars_body
     assert "Full details remain in the operator console." in fars_body
     assert ".hero-image:hover" in fars_body

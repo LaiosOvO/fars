@@ -1182,6 +1182,8 @@ def _fars_html(api_prefix: str) -> str:
         <h2>RESEARCH RUNS</h2>
         <div class="links">
           <span id="runs-count" class="mini-pill">Visible runs: --</span>
+          <span id="refresh-cadence" class="mini-pill">Refresh: 15s</span>
+          <span id="refresh-countdown" class="mini-pill">Next refresh: --</span>
           <span id="last-updated" class="mini-pill">Last updated: --</span>
           <a href="/console">Advanced operations in console →</a>
         </div>
@@ -1217,6 +1219,7 @@ def _fars_html(api_prefix: str) -> str:
 
   <script>
     const API = "{api_prefix}";
+    const REFRESH_INTERVAL_MS = 15000;
     const fmtStatus = (value) => {{
       const status = (value || "unknown").toLowerCase();
       const cls = status.includes("complete") || status.includes("ready") ? "ok" : (status.includes("fail") ? "err" : "warn");
@@ -1240,12 +1243,30 @@ def _fars_html(api_prefix: str) -> str:
     }}
 
     let lastFocusedElement = null;
+    let refreshCountdownTimer = null;
+    let nextRefreshAt = Date.now() + REFRESH_INTERVAL_MS;
 
     function formatIso(value) {{
       if (!value) return "-";
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return value;
       return date.toLocaleString();
+    }}
+
+    function updateRefreshCountdown() {{
+      const node = document.getElementById("refresh-countdown");
+      const seconds = Math.max(0, Math.ceil((nextRefreshAt - Date.now()) / 1000));
+      node.textContent = `Next refresh: ${{seconds}}s`;
+    }}
+
+    function resetRefreshCountdown() {{
+      nextRefreshAt = Date.now() + REFRESH_INTERVAL_MS;
+      updateRefreshCountdown();
+    }}
+
+    function ensureRefreshTicker() {{
+      if (refreshCountdownTimer) return;
+      refreshCountdownTimer = window.setInterval(updateRefreshCountdown, 1000);
     }}
 
     function updateLastUpdated(value) {{
@@ -1336,6 +1357,7 @@ def _fars_html(api_prefix: str) -> str:
         runs: runCount,
         events: eventCount,
       }});
+      resetRefreshCountdown();
     }}
 
     function setMenuOpen(open) {{
@@ -1417,9 +1439,11 @@ def _fars_html(api_prefix: str) -> str:
     Promise.all([refreshLive()]).catch((err) => {{
       console.error(err);
     }});
+    ensureRefreshTicker();
+    updateRefreshCountdown();
     setInterval(() => {{
       refreshLive().catch(() => {{}});
-    }}, 15000);
+    }}, REFRESH_INTERVAL_MS);
   </script>
 </body>
 </html>
