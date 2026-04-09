@@ -11,5 +11,6 @@ dist/
 build/
 .artifacts/
 *.egg-info/
+._*
 .codex/
 .omx/
