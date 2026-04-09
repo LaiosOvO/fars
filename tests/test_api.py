@@ -267,6 +267,12 @@ def test_console_ui_routes(tmp_path: Path) -> None:
     assert "mini-pill" in fars_body
     assert "letter-spacing: 0.04em;" in fars_body
     assert 'class="spinner"' in fars_body
+    assert "Visible deployments:" in fars_body
+    assert "Visible runs:" in fars_body
+    assert "Visible events:" in fars_body
+    assert 'id="deployments-count"' in fars_body
+    assert 'id="runs-count"' in fars_body
+    assert 'id="events-count"' in fars_body
     assert "public progress tracking" in fars_body
     assert "Full details remain in the operator console." in fars_body
     assert ".hero-image:hover" in fars_body

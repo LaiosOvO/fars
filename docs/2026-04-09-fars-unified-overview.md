@@ -391,6 +391,9 @@ public/live view：
 - hero
 - deployments
 - research runs
+- latest run events
+- last-updated indicator
+- visible-count pills（deployments / runs / events）
 - mobile menu sheet
 - footer
 - public copy rhythm

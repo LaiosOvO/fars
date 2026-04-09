@@ -70,6 +70,7 @@ Turn papers from static PDFs into a structured, queryable, evidence-backed knowl
 - ✓ Public `/fars` no longer renders operator-only artifact links when token protection is enabled — 2026-04-08
 - ✓ Public `/fars/data` is now sanitized and omits operator-only run fields such as branch names and full summaries — 2026-04-08
 - ✓ Public `/fars` now surfaces sanitized latest run events via `/fars/events` and displays a public last-updated indicator — 2026-04-09
+- ✓ Public `/fars` now shows lightweight visible-count pills (deployments/runs/events) without exposing operator-only data — 2026-04-09
 
 ### Active
 

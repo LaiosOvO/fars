@@ -1170,6 +1170,9 @@ def _fars_html(api_prefix: str) -> str:
     <section class="section">
       <div class="section-head">
         <h2>FARS DEPLOYMENTS</h2>
+        <div class="links">
+          <span id="deployments-count" class="mini-pill">Visible deployments: --</span>
+        </div>
       </div>
       <div id="deployments-wrap" class="loading">{_loading_indicator_html("Loading deployments...")}</div>
     </section>
@@ -1178,6 +1181,7 @@ def _fars_html(api_prefix: str) -> str:
       <div class="section-head">
         <h2>RESEARCH RUNS</h2>
         <div class="links">
+          <span id="runs-count" class="mini-pill">Visible runs: --</span>
           <span id="last-updated" class="mini-pill">Last updated: --</span>
           <a href="/console">Advanced operations in console →</a>
         </div>
@@ -1191,6 +1195,9 @@ def _fars_html(api_prefix: str) -> str:
     <section class="section">
       <div class="section-head">
         <h2>LATEST RUN EVENTS</h2>
+        <div class="links">
+          <span id="events-count" class="mini-pill">Visible events: --</span>
+        </div>
       </div>
       <div id="events-body" class="loading">{_loading_indicator_html("Loading latest run events...")}</div>
     </section>
@@ -1246,19 +1253,17 @@ def _fars_html(api_prefix: str) -> str:
       node.textContent = `Last updated: ${{formatIso(value)}}`;
     }}
 
-    async function refreshPublicData() {{
-      const [readiness, publicData] = await Promise.all([
-        fetchJson(`${{API}}/health/readiness`),
-        fetchJson(`/fars/data?limit=12`),
-      ]);
-      void readiness;
-      const runs = publicData.research_runs || [];
-      const batches = publicData.deployments || [];
+    function updateVisibleCounts({{ deployments = 0, runs = 0, events = 0 }}) {{
+      document.getElementById("deployments-count").textContent = `Visible deployments: ${{deployments}}`;
+      document.getElementById("runs-count").textContent = `Visible runs: ${{runs}}`;
+      document.getElementById("events-count").textContent = `Visible events: ${{events}}`;
+    }}
 
+    function renderDeployments(batches) {{
       const wrap = document.getElementById("deployments-wrap");
       if (!batches.length) {{
         wrap.innerHTML = '<div class="loading"><span>No deployments yet.</span></div>';
-        return;
+        return 0;
       }}
       wrap.innerHTML = `<div class="card-grid">
         ${{batches.map(item => `
@@ -1274,16 +1279,14 @@ def _fars_html(api_prefix: str) -> str:
             }}</div>
           </article>`).join("")}}
       </div>`;
-      updateLastUpdated(publicData.generated_at);
+      return batches.length;
     }}
 
-    async function refreshRuns() {{
-      const data = await fetchJson(`/fars/data?limit=12`);
-      const runs = data.research_runs || [];
+    function renderRuns(runs) {{
       const body = document.getElementById("runs-body");
       if (!runs.length) {{
         body.innerHTML = '<div class="loading"><span>No research runs yet.</span></div>';
-        return;
+        return 0;
       }}
       body.innerHTML = `<div class="card-grid">
         ${{runs.map(run => `
@@ -1295,17 +1298,14 @@ def _fars_html(api_prefix: str) -> str:
             <div class="summary">Research run status is visible here. Full details remain in the operator console.</div>
           </article>`).join("")}}
       </div>`;
-      updateLastUpdated(data.generated_at);
+      return runs.length;
     }}
 
-    async function refreshEvents() {{
-      const data = await fetchJson(`/fars/events?limit=16`);
-      const events = data.events || [];
+    function renderEvents(events) {{
       const body = document.getElementById("events-body");
       if (!events.length) {{
         body.innerHTML = '<div class="loading"><span>No run events yet.</span></div>';
-        updateLastUpdated(data.generated_at);
-        return;
+        return 0;
       }}
       body.innerHTML = `<div class="card-grid">
         ${{events.map(event => `
@@ -1318,11 +1318,24 @@ def _fars_html(api_prefix: str) -> str:
             <div class="summary">${{formatIso(event.time_created)}}</div>
           </article>`).join("")}}
       </div>`;
-      updateLastUpdated(data.generated_at);
+      return events.length;
     }}
 
     async function refreshLive() {{
-      await Promise.all([refreshPublicData(), refreshRuns(), refreshEvents()]);
+      const [_readiness, publicData, eventsData] = await Promise.all([
+        fetchJson(`${{API}}/health/readiness`),
+        fetchJson(`/fars/data?limit=12`),
+        fetchJson(`/fars/events?limit=16`),
+      ]);
+      const deploymentCount = renderDeployments(publicData.deployments || []);
+      const runCount = renderRuns(publicData.research_runs || []);
+      const eventCount = renderEvents(eventsData.events || []);
+      updateLastUpdated(eventsData.generated_at || publicData.generated_at);
+      updateVisibleCounts({{
+        deployments: deploymentCount,
+        runs: runCount,
+        events: eventCount,
+      }});
     }}
 
     function setMenuOpen(open) {{
