@@ -433,9 +433,9 @@ machine translation</textarea></div>
         <h2>Runs</h2>
         <table>
           <thead>
-            <tr><th>ID</th><th>Status</th><th>Branch</th><th>Summary</th><th>Artifacts</th></tr>
+            <tr><th>ID</th><th>Status</th><th>LLM</th><th>Branch</th><th>Summary</th><th>Artifacts</th></tr>
           </thead>
-          <tbody id="runs-body"><tr><td colspan="5">Loading...</td></tr></tbody>
+          <tbody id="runs-body"><tr><td colspan="6">Loading...</td></tr></tbody>
         </table>
       </div>
       <div class="panel span-4">
@@ -567,6 +567,17 @@ machine translation</textarea></div>
       return `<span class="tag ${{cls}}">${{status}}</span>`;
     }}
 
+    function parseRunLlm(run) {{
+      try {{
+        const payload = run.result_payload_json ? JSON.parse(run.result_payload_json) : null;
+        const llm = payload && payload.llm ? payload.llm : null;
+        if (!llm) return "-";
+        return `${{llm.profile || "profile?"}} / ${{llm.model || "model?"}} / ${{llm.reasoning_effort || "reasoning?"}}`;
+      }} catch (_err) {{
+        return "-";
+      }}
+    }}
+
     async function refreshKpis() {{
       const readiness = await fetchJson(`${{API}}/health/readiness`);
       const runs = await fetchJson(`${{API}}/runs`);
@@ -581,15 +592,17 @@ machine translation</textarea></div>
       const runs = await fetchJson(`${{API}}/runs`);
       const body = document.getElementById("runs-body");
       if (!runs.length) {{
-        body.innerHTML = '<tr><td colspan="5">No runs yet.</td></tr>';
+        body.innerHTML = '<tr><td colspan="6">No runs yet.</td></tr>';
         return;
       }}
       body.innerHTML = runs.map(run => {{
         const summary = run.result_summary ? run.result_summary.slice(0, 110) : "-";
+        const llm = parseRunLlm(run);
         return `
           <tr>
             <td>${{run.id}}</td>
             <td>${{badge(run.status)}}</td>
+            <td><code>${{llm}}</code></td>
             <td><code>${{run.branch_name || "-"}}</code></td>
             <td>${{summary}}</td>
             <td>

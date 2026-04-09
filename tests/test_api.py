@@ -312,6 +312,8 @@ def test_console_ui_routes(tmp_path: Path) -> None:
     assert "Auto experiment run with Codex LLM config." in body
     assert "llm profile: frontier" in body
     assert "model (auto from profile if empty)" in body
+    assert "<th>LLM</th>" in body
+    assert "parseRunLlm" in body
     assert "Continue Auto Experiment Run" in body
     assert "continue-submit" in body
     assert "const llmDefaults" in body

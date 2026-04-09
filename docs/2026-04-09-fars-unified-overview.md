@@ -408,6 +408,7 @@ operator view：
 - batch run
 - continue run（auto experiment continuation）
 - Codex LLM config controls（profile/model/reasoning）
+- per-run LLM config visibility in the runs table
 - reconcile
 - paper explorer
 - graph viewer
