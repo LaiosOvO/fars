@@ -103,7 +103,7 @@ async def console_login(request: Request):
     body = (await request.body()).decode("utf-8")
     token = parse_qs(body).get("token", [""])[0]
     if token != settings.operator_token:
-        return HTMLResponse(_console_login_html(error="Invalid operator token"), status_code=401)
+        return HTMLResponse(_console_login_html(error="Operator Token 无效"), status_code=401)
     response = RedirectResponse(url="/console", status_code=303)
     response.set_cookie(
         key=OPERATOR_SESSION_COOKIE,
@@ -127,7 +127,7 @@ def _console_html(api_prefix: str) -> str:
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>FARS Research Console</title>
+  <title>FARS 自动实验控制台</title>
   <style>
     :root {{
       color-scheme: dark;
@@ -248,6 +248,15 @@ def _console_html(api_prefix: str) -> str:
       place-items: center;
       color: var(--muted);
     }}
+    #run-chart {{
+      width: 100%;
+      min-height: 220px;
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+    }}
     pre {{
       white-space: pre-wrap;
       margin: 0;
@@ -259,52 +268,52 @@ def _console_html(api_prefix: str) -> str:
 <body>
   <div class="wrap">
     <div class="panel span-12" style="margin-bottom:16px">
-      <h1>FARS Research Console</h1>
-      <p>Not just backend: run research loops, inspect runs/batches, and visualize paper graph relationships.</p>
-      <p><span class="label">API Prefix</span> <code id="api-prefix">{api_prefix}</code></p>
+      <h1>FARS 自动实验控制台</h1>
+      <p>这里不是单纯后端页面，而是可直接运行自动实验、查看阶段状态、检查 run / batch、生成论文产物的操作台。</p>
+      <p><span class="label">API 前缀</span> <code id="api-prefix">{api_prefix}</code></p>
     </div>
 
     <div class="grid">
       <div class="panel span-3">
-        <div class="label">Readiness</div>
+        <div class="label">就绪状态</div>
         <div class="kpi" id="k-ready">-</div>
       </div>
       <div class="panel span-3">
-        <div class="label">Papers</div>
+        <div class="label">论文数</div>
         <div class="kpi" id="k-paper">-</div>
       </div>
       <div class="panel span-3">
-        <div class="label">Runs</div>
+        <div class="label">运行数</div>
         <div class="kpi" id="k-run">-</div>
       </div>
       <div class="panel span-3">
-        <div class="label">Batches</div>
+        <div class="label">批次数</div>
         <div class="kpi" id="k-batch">-</div>
       </div>
     </div>
 
     <div class="grid">
       <div class="panel span-6">
-        <h2>Single Research Loop</h2>
-        <p>Auto experiment run with Codex LLM config.</p>
+        <h2>单次自动实验</h2>
+        <p>使用 Codex 配置运行一次完整自动实验。</p>
         <div class="row">
-          <div class="c6"><input id="run-topic" placeholder="topic (e.g. transformers)" value="transformers" /></div>
+          <div class="c6"><input id="run-topic" placeholder="主题（例如 transformers）" value="transformers" /></div>
           <div class="c3"><input id="run-limit" type="number" min="1" max="20" value="2" /></div>
           <div class="c3"><input id="run-iter" type="number" min="1" max="20" value="2" /></div>
         </div>
         <div class="row">
           <div class="c4">
             <select id="run-llm-profile">
-              <option value="frontier" selected>llm profile: frontier</option>
-              <option value="standard">llm profile: standard</option>
-              <option value="spark">llm profile: spark</option>
-              <option value="custom">llm profile: custom</option>
+              <option value="frontier" selected>模型档位：frontier</option>
+              <option value="standard">模型档位：standard</option>
+              <option value="spark">模型档位：spark</option>
+              <option value="custom">模型档位：custom</option>
             </select>
           </div>
-          <div class="c4"><input id="run-llm-model" placeholder="model (auto from profile if empty)" /></div>
+          <div class="c4"><input id="run-llm-model" placeholder="模型名（留空则按档位自动填充）" /></div>
           <div class="c4">
             <select id="run-llm-reasoning">
-              <option value="">reasoning: profile default</option>
+              <option value="">推理强度：使用档位默认值</option>
               <option value="low">low</option>
               <option value="medium">medium</option>
               <option value="high">high</option>
@@ -313,22 +322,22 @@ def _console_html(api_prefix: str) -> str:
           </div>
         </div>
         <div class="row">
-          <div class="c6"><input id="run-branch" placeholder="branch name (optional)" /></div>
+          <div class="c6"><input id="run-branch" placeholder="分支名（可选）" /></div>
           <div class="c3">
             <select id="run-worktree">
-              <option value="false" selected>no worktree</option>
-              <option value="true">use worktree</option>
+              <option value="false" selected>不使用 worktree</option>
+              <option value="true">使用 worktree</option>
             </select>
           </div>
-          <div class="c3"><button id="run-submit">Run Loop</button></div>
+          <div class="c3"><button id="run-submit">开始运行</button></div>
         </div>
       </div>
 
       <div class="panel span-6">
-        <h2>Batch Loop</h2>
-        <p>Auto experiment batch with shared Codex LLM config.</p>
+        <h2>批量自动实验</h2>
+        <p>使用同一套 Codex 配置批量运行多个主题。</p>
         <div class="row">
-          <div class="c12"><textarea id="batch-topics" placeholder="one topic per line">transformers
+          <div class="c12"><textarea id="batch-topics" placeholder="每行一个主题">transformers
 machine translation</textarea></div>
         </div>
         <div class="row">
@@ -340,25 +349,25 @@ machine translation</textarea></div>
         <div class="row">
           <div class="c6">
             <select id="batch-worktree">
-              <option value="false" selected>no worktree</option>
-              <option value="true">use worktree</option>
+              <option value="false" selected>不使用 worktree</option>
+              <option value="true">使用 worktree</option>
             </select>
           </div>
-          <div class="c6"><button id="batch-submit">Run Batch</button></div>
+          <div class="c6"><button id="batch-submit">开始批量运行</button></div>
         </div>
         <div class="row">
           <div class="c4">
             <select id="batch-llm-profile">
-              <option value="frontier" selected>llm profile: frontier</option>
-              <option value="standard">llm profile: standard</option>
-              <option value="spark">llm profile: spark</option>
-              <option value="custom">llm profile: custom</option>
+              <option value="frontier" selected>模型档位：frontier</option>
+              <option value="standard">模型档位：standard</option>
+              <option value="spark">模型档位：spark</option>
+              <option value="custom">模型档位：custom</option>
             </select>
           </div>
-          <div class="c4"><input id="batch-llm-model" placeholder="model (auto from profile if empty)" /></div>
+          <div class="c4"><input id="batch-llm-model" placeholder="模型名（留空则按档位自动填充）" /></div>
           <div class="c4">
             <select id="batch-llm-reasoning">
-              <option value="">reasoning: profile default</option>
+              <option value="">推理强度：使用档位默认值</option>
               <option value="low">low</option>
               <option value="medium">medium</option>
               <option value="high">high</option>
@@ -371,25 +380,25 @@ machine translation</textarea></div>
 
     <div class="grid">
       <div class="panel span-12">
-        <h2>Continue Auto Experiment Run</h2>
+        <h2>继续已有实验</h2>
         <div class="row">
-          <div class="c4"><input id="continue-run-id" type="number" min="1" placeholder="run id" /></div>
+          <div class="c4"><input id="continue-run-id" type="number" min="1" placeholder="运行 ID" /></div>
           <div class="c4"><input id="continue-iterations" type="number" min="1" max="20" value="1" /></div>
-          <div class="c4"><button id="continue-submit">Continue Run</button></div>
+          <div class="c4"><button id="continue-submit">继续运行</button></div>
         </div>
         <div class="row">
           <div class="c4">
             <select id="continue-llm-profile">
-              <option value="frontier" selected>llm profile: frontier</option>
-              <option value="standard">llm profile: standard</option>
-              <option value="spark">llm profile: spark</option>
-              <option value="custom">llm profile: custom</option>
+              <option value="frontier" selected>模型档位：frontier</option>
+              <option value="standard">模型档位：standard</option>
+              <option value="spark">模型档位：spark</option>
+              <option value="custom">模型档位：custom</option>
             </select>
           </div>
-          <div class="c4"><input id="continue-llm-model" placeholder="model (auto from profile if empty)" /></div>
+          <div class="c4"><input id="continue-llm-model" placeholder="模型名（留空则按档位自动填充）" /></div>
           <div class="c4">
             <select id="continue-llm-reasoning">
-              <option value="">reasoning: profile default</option>
+              <option value="">推理强度：使用档位默认值</option>
               <option value="low">low</option>
               <option value="medium">medium</option>
               <option value="high">high</option>
@@ -402,32 +411,32 @@ machine translation</textarea></div>
 
     <div class="grid">
       <div class="panel span-12">
-        <h2>Run Reconciliation</h2>
+        <h2>运行结果对齐</h2>
         <div class="row">
-          <div class="c10"><input id="reconcile-run-ids" placeholder="run ids, comma separated (e.g. 1,2,3)" /></div>
-          <div class="c2"><button id="reconcile-submit">Reconcile</button></div>
+          <div class="c10"><input id="reconcile-run-ids" placeholder="运行 ID，逗号分隔（例如 1,2,3）" /></div>
+          <div class="c2"><button id="reconcile-submit">开始对齐</button></div>
         </div>
-        <pre id="reconcile-output">No reconciliation executed.</pre>
+        <pre id="reconcile-output">尚未执行对齐。</pre>
       </div>
     </div>
 
     <div class="grid">
       <div class="panel span-12">
-        <h2>Paper Explorer</h2>
+        <h2>论文浏览器</h2>
         <div class="row">
-          <div class="c10"><input id="paper-query" placeholder="search papers (title / abstract / venue)" value="transformer" /></div>
-          <div class="c2"><button id="paper-search">Search</button></div>
+          <div class="c10"><input id="paper-query" placeholder="搜索论文（标题 / 摘要 / 会议）" value="transformer" /></div>
+          <div class="c2"><button id="paper-search">搜索</button></div>
         </div>
         <table>
           <thead>
-            <tr><th>ID</th><th>Title</th><th>Year</th><th>Citations</th><th>Action</th></tr>
+            <tr><th>ID</th><th>标题</th><th>年份</th><th>引用数</th><th>操作</th></tr>
           </thead>
-          <tbody id="papers-body"><tr><td colspan="5">Search to load papers.</td></tr></tbody>
+          <tbody id="papers-body"><tr><td colspan="5">输入关键词后加载论文。</td></tr></tbody>
         </table>
         <div class="row" style="margin-top:10px">
           <div class="c12">
-            <div class="label">Selected Paper Detail</div>
-            <pre id="paper-detail">No paper selected.</pre>
+            <div class="label">当前论文详情</div>
+            <pre id="paper-detail">尚未选择论文。</pre>
           </div>
         </div>
       </div>
@@ -435,30 +444,47 @@ machine translation</textarea></div>
 
     <div class="grid">
       <div class="panel span-8">
-        <h2>Runs</h2>
+        <h2>运行列表</h2>
         <table>
           <thead>
-            <tr><th>ID</th><th>Status</th><th>LLM</th><th>Branch</th><th>Summary</th><th>Actions</th></tr>
+            <tr><th>ID</th><th>状态</th><th>LLM</th><th>分支</th><th>摘要</th><th>操作</th></tr>
           </thead>
           <tbody id="runs-body"><tr><td colspan="6">Loading...</td></tr></tbody>
         </table>
       </div>
       <div class="panel span-4">
-        <h2>Run Inspector</h2>
+        <h2>运行检查器</h2>
         <div class="row">
-          <div class="c8"><input id="inspect-run-id" type="number" min="1" placeholder="run id" /></div>
-          <div class="c4"><button id="inspect-run-submit">Inspect</button></div>
+          <div class="c8"><input id="inspect-run-id" type="number" min="1" placeholder="运行 ID" /></div>
+          <div class="c4"><button id="inspect-run-submit">查看</button></div>
         </div>
         <div class="row">
           <div class="c12">
-            <div class="label">Selected Run</div>
-            <pre id="run-detail">No run selected.</pre>
+            <div class="label">当前运行</div>
+            <pre id="run-detail">尚未选择运行。</pre>
           </div>
         </div>
         <div class="row" style="margin-top:10px">
           <div class="c12">
-            <div class="label">Latest Events</div>
-            <pre id="run-events">No run events loaded.</pre>
+            <div class="label">最新事件</div>
+            <pre id="run-events">尚未加载运行事件。</pre>
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <div class="c12">
+            <div class="label">论文阶段进度</div>
+            <pre id="run-stages">尚未加载阶段进度。</pre>
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <div class="c4"><button id="run-report-generate">生成报告</button></div>
+          <div class="c4"><button id="run-draft-generate">生成论文草稿</button></div>
+          <div class="c4"><button id="run-bundle-generate">生成产物包</button></div>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <div class="c12">
+            <div class="label">迭代趋势</div>
+            <div id="run-chart">尚未加载运行指标。</div>
           </div>
         </div>
       </div>
@@ -466,21 +492,21 @@ machine translation</textarea></div>
 
     <div class="grid">
       <div class="panel span-12">
-        <h2>Graph Viewer</h2>
+        <h2>图谱查看器</h2>
         <div class="row">
           <div class="c8"><input id="graph-paper-id" type="number" min="1" value="1" /></div>
-          <div class="c4"><button id="graph-load">Load</button></div>
+          <div class="c4"><button id="graph-load">加载图谱</button></div>
         </div>
-        <div id="graph">No graph loaded</div>
+        <div id="graph">尚未加载图谱</div>
       </div>
     </div>
 
     <div class="grid">
       <div class="panel span-12">
-        <h2>Batches</h2>
+        <h2>批次列表</h2>
         <table>
           <thead>
-            <tr><th>Batch ID</th><th>Kind</th><th>Created</th><th>Manifest</th><th>Downloads</th></tr>
+            <tr><th>批次 ID</th><th>类型</th><th>创建时间</th><th>清单</th><th>下载</th></tr>
           </thead>
           <tbody id="batches-body"><tr><td colspan="5">Loading...</td></tr></tbody>
         </table>
@@ -489,8 +515,8 @@ machine translation</textarea></div>
 
     <div class="grid">
       <div class="panel span-12">
-        <h2>Logs</h2>
-        <pre id="log">ready.</pre>
+        <h2>操作日志</h2>
+        <pre id="log">控制台已就绪。</pre>
       </div>
     </div>
   </div>
@@ -608,6 +634,102 @@ machine translation</textarea></div>
       }}
     }}
 
+    function renderRunChart(iterations) {{
+      const host = document.getElementById("run-chart");
+      const numeric = (iterations || [])
+        .map((item) => ({{
+          iteration_index: item.iteration_index,
+          metric_name: item.metric_name,
+          value: Number(item.metric_value),
+          decision: item.decision,
+        }}))
+        .filter((item) => Number.isFinite(item.value));
+      if (!numeric.length) {{
+        host.textContent = "当前运行还没有可绘制的数值指标。";
+        return;
+      }}
+      const width = 520;
+      const height = 220;
+      const padding = 28;
+      const minValue = Math.min(...numeric.map((item) => item.value));
+      const maxValue = Math.max(...numeric.map((item) => item.value));
+      const spread = Math.max(maxValue - minValue, 1);
+      const xStep = numeric.length > 1 ? (width - padding * 2) / (numeric.length - 1) : 0;
+      const points = numeric.map((item, index) => {{
+        const x = padding + index * xStep;
+        const y = height - padding - ((item.value - minValue) / spread) * (height - padding * 2);
+        return {{ ...item, x, y }};
+      }});
+      let svg = `<svg viewBox="0 0 ${{width}} ${{height}}" width="100%" height="${{height}}">`;
+      svg += `<line x1="${{padding}}" y1="${{height - padding}}" x2="${{width - padding}}" y2="${{height - padding}}" stroke="#31466f" />`;
+      svg += `<line x1="${{padding}}" y1="${{padding}}" x2="${{padding}}" y2="${{height - padding}}" stroke="#31466f" />`;
+      svg += `<polyline fill="none" stroke="#6aa4ff" stroke-width="2" points="${{points.map((p) => `${{p.x}},${{p.y}}`).join(" ")}}" />`;
+      points.forEach((point) => {{
+        const fill = point.decision === "keep" ? "#34d399" : "#f87171";
+        svg += `<circle cx="${{point.x}}" cy="${{point.y}}" r="4" fill="${{fill}}" />`;
+        svg += `<text x="${{point.x}}" y="${{height - 8}}" text-anchor="middle" fill="#9fb2d4" font-size="10">#${{point.iteration_index}}</text>`;
+      }});
+      const last = points[points.length - 1];
+      svg += `<text x="${{width - padding}}" y="${{padding - 8}}" text-anchor="end" fill="#d8e4ff" font-size="11">${{last.metric_name || "metric"}}: ${{last.value}}</text>`;
+      svg += "</svg>";
+      host.innerHTML = svg;
+    }}
+
+    function renderRunStages({{ run, events, iterations, llm }}) {{
+      let payload = null;
+      try {{
+        payload = run && run.result_payload_json ? JSON.parse(run.result_payload_json) : null;
+      }} catch (_err) {{
+        payload = null;
+      }}
+      const stages = [
+        {{ name: "自动实验启动", done: Boolean(run), detail: run ? `run #${{run.id}}` : "未创建" }},
+        {{ name: "假设生成", done: Boolean(payload && payload.hypothesis_count > 0), detail: payload ? `${{payload.hypothesis_count || 0}} 条` : "未知" }},
+        {{ name: "实验计划", done: Boolean(payload && payload.experiment_plan_count > 0), detail: payload ? `${{payload.experiment_plan_count || 0}} 个` : "未知" }},
+        {{ name: "实验任务", done: Boolean(payload && payload.experiment_task_count > 0), detail: payload ? `${{payload.experiment_task_count || 0}} 个` : "未知" }},
+        {{ name: "实验迭代", done: Boolean(iterations && iterations.length > 0), detail: `${{iterations.length}} 次` }},
+        {{ name: "研究报告", done: Boolean(run && run.report_title), detail: run && run.report_title ? run.report_title : "未生成" }},
+        {{ name: "论文草稿", done: Boolean(run && run.paper_draft_title), detail: run && run.paper_draft_title ? run.paper_draft_title : "未生成" }},
+        {{ name: "产物打包", done: Boolean(run && run.artifact_dir), detail: run && run.artifact_dir ? run.artifact_dir : "未生成" }},
+        {{ name: "事件轨迹", done: Boolean(events && events.length > 0), detail: `${{events.length}} 条事件` }},
+        {{ name: "LLM 配置", done: llm !== "-", detail: llm }},
+      ];
+      document.getElementById("run-stages").textContent = stages
+        .map((stage) => `${{stage.done ? "✅" : "⏳"}} ${{stage.name}}｜${{stage.detail}}`)
+        .join("\\n");
+    }}
+
+    async function runStageAction(action) {{
+      try {{
+        if (!selectedRunId) {{
+          throw new Error("请先选择一个运行。");
+        }}
+        const endpoints = {{
+          report: `${{API}}/runs/${{selectedRunId}}/report`,
+          draft: `${{API}}/runs/${{selectedRunId}}/paper-draft`,
+          bundle: `${{API}}/runs/${{selectedRunId}}/bundle`,
+        }};
+        const result = await fetchJson(endpoints[action], {{ method: "POST" }});
+        log(`阶段执行完成：${{action}}`, result);
+        await refreshAll();
+        await inspectRun(selectedRunId, true);
+      }} catch (err) {{
+        log("阶段执行失败：" + err.message);
+      }}
+    }}
+
+    async function generateReportForSelectedRun() {{
+      await runStageAction("report");
+    }}
+
+    async function generateDraftForSelectedRun() {{
+      await runStageAction("draft");
+    }}
+
+    async function generateBundleForSelectedRun() {{
+      await runStageAction("bundle");
+    }}
+
     async function inspectRun(runId, silent=false) {{
       try {{
         const numericRunId = Number(runId);
@@ -616,10 +738,11 @@ machine translation</textarea></div>
         }}
         selectedRunId = numericRunId;
         document.getElementById("inspect-run-id").value = String(numericRunId);
-        const [run, status, events] = await Promise.all([
+        const [run, status, events, iterations] = await Promise.all([
           fetchJson(`${{API}}/runs/${{numericRunId}}`),
           fetchJson(`${{API}}/runs/${{numericRunId}}/status`),
           fetchJson(`${{API}}/runs/${{numericRunId}}/events`),
+          fetchJson(`${{API}}/runs/${{numericRunId}}/iterations`),
         ]);
         const llm = parseRunLlm(run);
         document.getElementById("run-detail").textContent = JSON.stringify({{
@@ -633,6 +756,8 @@ machine translation</textarea></div>
           report_title: run.report_title,
           paper_draft_title: run.paper_draft_title,
         }}, null, 2);
+        renderRunStages({{ run, events, iterations, llm }});
+        renderRunChart(iterations);
         document.getElementById("run-events").textContent = JSON.stringify(
           events.slice(-12).map((event) => ({{
             time_created: event.time_created,
@@ -648,10 +773,12 @@ machine translation</textarea></div>
           log(`run ${{numericRunId}} inspected`, {{ status: status.status, llm }});
         }}
       }} catch (err) {{
-        document.getElementById("run-detail").textContent = "Run inspect failed: " + err.message;
-        document.getElementById("run-events").textContent = "Run events unavailable.";
+        document.getElementById("run-detail").textContent = "运行检查失败：" + err.message;
+        document.getElementById("run-events").textContent = "运行事件不可用。";
+        document.getElementById("run-stages").textContent = "阶段进度不可用。";
+        document.getElementById("run-chart").textContent = "运行指标不可用。";
         if (!silent) {{
-          log("run inspect failed: " + err.message);
+          log("运行检查失败：" + err.message);
         }}
       }}
     }}
@@ -670,7 +797,7 @@ machine translation</textarea></div>
       const runs = await fetchJson(`${{API}}/runs`);
       const body = document.getElementById("runs-body");
       if (!runs.length) {{
-        body.innerHTML = '<tr><td colspan="6">No runs yet.</td></tr>';
+        body.innerHTML = '<tr><td colspan="6">还没有运行记录。</td></tr>';
         return;
       }}
       body.innerHTML = runs.map(run => {{
@@ -685,10 +812,10 @@ machine translation</textarea></div>
             <td><code>${{run.branch_name || "-"}}</code></td>
             <td>${{summary}}</td>
             <td>
-              <button onclick="inspectRun(${{run.id}})">inspect</button> ·
-              <a href="${{API}}/runs/${{run.id}}/report/download">report</a> ·
-              <a href="${{API}}/runs/${{run.id}}/paper-draft/download">draft</a> ·
-              <a href="${{API}}/runs/${{run.id}}/bundle/download">bundle</a>
+              <button onclick="inspectRun(${{run.id}})">查看</button> ·
+              <a href="${{API}}/runs/${{run.id}}/report/download">报告</a> ·
+              <a href="${{API}}/runs/${{run.id}}/paper-draft/download">草稿</a> ·
+              <a href="${{API}}/runs/${{run.id}}/bundle/download">打包</a>
             </td>
           </tr>
         `;
@@ -701,13 +828,13 @@ machine translation</textarea></div>
     async function searchPapers() {{
       const q = document.getElementById("paper-query").value.trim();
       if (!q) {{
-        document.getElementById("papers-body").innerHTML = '<tr><td colspan="5">Enter query.</td></tr>';
+        document.getElementById("papers-body").innerHTML = '<tr><td colspan="5">请输入搜索关键词。</td></tr>';
         return;
       }}
       const papers = await fetchJson(`${{API}}/papers/search?q=${{encodeURIComponent(q)}}`);
       const body = document.getElementById("papers-body");
       if (!papers.length) {{
-        body.innerHTML = '<tr><td colspan="5">No papers found.</td></tr>';
+        body.innerHTML = '<tr><td colspan="5">没有找到论文。</td></tr>';
         return;
       }}
       body.innerHTML = papers.map(item => `
@@ -716,7 +843,7 @@ machine translation</textarea></div>
           <td>${{item.canonical_title}}</td>
           <td>${{item.publication_year || "-"}}</td>
           <td>${{item.citation_count}}</td>
-          <td><button onclick="inspectPaper(${{item.id}})">Inspect</button></td>
+          <td><button onclick="inspectPaper(${{item.id}})">查看</button></td>
         </tr>
       `).join("");
     }}
@@ -733,13 +860,13 @@ machine translation</textarea></div>
         }}, null, 2);
         document.getElementById("graph-paper-id").value = paperId;
         await loadGraph();
-        log(`paper ${{paperId}} inspected`, {{
+        log(`论文已查看 #${{paperId}}`, {{
           title: detail.canonical_title,
           citations: citations.length,
         }});
       }} catch (err) {{
-        document.getElementById("paper-detail").textContent = "Inspect failed: " + err.message;
-        log("paper inspect failed: " + err.message);
+        document.getElementById("paper-detail").textContent = "论文查看失败：" + err.message;
+        log("论文查看失败：" + err.message);
       }}
     }}
 
@@ -747,7 +874,7 @@ machine translation</textarea></div>
       const batches = await fetchJson(`${{API}}/research-loops/batches?limit=50`);
       const body = document.getElementById("batches-body");
       if (!batches.length) {{
-        body.innerHTML = '<tr><td colspan="5">No batches yet.</td></tr>';
+        body.innerHTML = '<tr><td colspan="5">还没有批次记录。</td></tr>';
         return;
       }}
       body.innerHTML = batches.map(item => `
@@ -755,12 +882,12 @@ machine translation</textarea></div>
           <td><code>${{item.batch_id}}</code></td>
           <td>${{item.kind}}</td>
           <td>${{item.created_at || "-"}}</td>
-          <td><a href="${{API}}/research-loops/batches/${{item.batch_id}}/manifest">manifest</a></td>
+          <td><a href="${{API}}/research-loops/batches/${{item.batch_id}}/manifest">清单</a></td>
           <td>
             <a href="${{API}}/research-loops/batches/${{item.batch_id}}/download">zip</a> ·
-            <a href="${{API}}/research-loops/batches/${{item.batch_id}}/summary/download">summary</a> ·
-            <a href="${{API}}/research-loops/batches/${{item.batch_id}}/items/download">items</a> ·
-            <a href="${{API}}/research-loops/batches/${{item.batch_id}}/reconciliation/download">recon</a>
+            <a href="${{API}}/research-loops/batches/${{item.batch_id}}/summary/download">总结</a> ·
+            <a href="${{API}}/research-loops/batches/${{item.batch_id}}/items/download">条目</a> ·
+            <a href="${{API}}/research-loops/batches/${{item.batch_id}}/reconciliation/download">对齐</a>
           </td>
         </tr>
       `).join("");
@@ -784,15 +911,15 @@ machine translation</textarea></div>
           use_worktree: document.getElementById("run-worktree").value === "true",
           ...buildLlmPayload("run"),
         }};
-        log("run loop started", payload);
+        log("单次自动实验已开始", payload);
         const result = await fetchJson(`${{API}}/research-loops/run`, {{
           method: "POST",
           body: JSON.stringify(payload),
         }});
-        log("run loop completed", result);
+        log("单次自动实验已完成", result);
         await refreshAll();
       }} catch (err) {{
-        log("run loop failed: " + err.message);
+        log("单次自动实验失败：" + err.message);
       }}
     }}
 
@@ -807,15 +934,15 @@ machine translation</textarea></div>
           use_worktree: document.getElementById("batch-worktree").value === "true",
           ...buildLlmPayload("batch"),
         }};
-        log("batch loop started", payload);
+        log("批量自动实验已开始", payload);
         const result = await fetchJson(`${{API}}/research-loops/batch-run`, {{
           method: "POST",
           body: JSON.stringify(payload),
         }});
-        log("batch loop completed", result);
+        log("批量自动实验已完成", result);
         await refreshAll();
       }} catch (err) {{
-        log("batch loop failed: " + err.message);
+        log("批量自动实验失败：" + err.message);
       }}
     }}
 
@@ -823,21 +950,21 @@ machine translation</textarea></div>
       try {{
         const runId = Number(document.getElementById("continue-run-id").value);
         if (!Number.isInteger(runId) || runId <= 0) {{
-          throw new Error("Provide a valid run id");
+          throw new Error("请输入有效的运行 ID。");
         }}
         const payload = {{
           iterations: Number(document.getElementById("continue-iterations").value),
           ...buildLlmPayload("continue"),
         }};
-        log(`continue run started #${{runId}}`, payload);
+        log(`继续运行已开始 #${{runId}}`, payload);
         const result = await fetchJson(`${{API}}/research-loops/${{runId}}/continue`, {{
           method: "POST",
           body: JSON.stringify(payload),
         }});
-        log(`continue run completed #${{runId}}`, result);
+        log(`继续运行已完成 #${{runId}}`, result);
         await refreshAll();
       }} catch (err) {{
-        log("continue run failed: " + err.message);
+        log("继续运行失败：" + err.message);
       }}
     }}
 
@@ -849,20 +976,20 @@ machine translation</textarea></div>
           .map(item => Number(item.trim()))
           .filter(item => Number.isInteger(item) && item > 0);
         if (!runIds.length) {{
-          throw new Error("Provide at least one valid run id");
+          throw new Error("请至少输入一个有效的运行 ID。");
         }}
         const payload = {{ run_ids: runIds }};
-        log("reconcile started", payload);
+        log("结果对齐已开始", payload);
         const result = await fetchJson(`${{API}}/research-loops/reconcile`, {{
           method: "POST",
           body: JSON.stringify(payload),
         }});
         document.getElementById("reconcile-output").textContent = JSON.stringify(result, null, 2);
-        log("reconcile completed", result);
+        log("结果对齐已完成", result);
         await refreshAll();
       }} catch (err) {{
-        document.getElementById("reconcile-output").textContent = "Reconcile failed: " + err.message;
-        log("reconcile failed: " + err.message);
+        document.getElementById("reconcile-output").textContent = "结果对齐失败：" + err.message;
+        log("结果对齐失败：" + err.message);
       }}
     }}
 
@@ -895,10 +1022,10 @@ machine translation</textarea></div>
       try {{
         const neighbors = await fetchJson(`${{API}}/graph/papers/${{paperId}}/neighbors`);
         renderGraph(paperId, neighbors);
-        log(`graph loaded for paper ${{paperId}}`, neighbors);
+        log(`图谱已加载，论文 #${{paperId}}`, neighbors);
       }} catch (err) {{
-        document.getElementById("graph").textContent = "Graph unavailable: " + err.message;
-        log("graph load failed: " + err.message);
+        document.getElementById("graph").textContent = "图谱不可用：" + err.message;
+        log("图谱加载失败：" + err.message);
       }}
     }}
 
@@ -906,19 +1033,22 @@ machine translation</textarea></div>
     document.getElementById("batch-submit").addEventListener("click", submitBatch);
     document.getElementById("continue-submit").addEventListener("click", submitContinue);
     document.getElementById("inspect-run-submit").addEventListener("click", () => inspectRun(document.getElementById("inspect-run-id").value));
+    document.getElementById("run-report-generate").addEventListener("click", generateReportForSelectedRun);
+    document.getElementById("run-draft-generate").addEventListener("click", generateDraftForSelectedRun);
+    document.getElementById("run-bundle-generate").addEventListener("click", generateBundleForSelectedRun);
     document.getElementById("reconcile-submit").addEventListener("click", submitReconcile);
     document.getElementById("graph-load").addEventListener("click", loadGraph);
-    document.getElementById("paper-search").addEventListener("click", () => searchPapers().catch(err => log("paper search failed: " + err.message)));
+    document.getElementById("paper-search").addEventListener("click", () => searchPapers().catch(err => log("论文搜索失败：" + err.message)));
     document.getElementById("paper-query").addEventListener("keydown", (event) => {{
       if (event.key === "Enter") {{
-        searchPapers().catch(err => log("paper search failed: " + err.message));
+        searchPapers().catch(err => log("论文搜索失败：" + err.message));
       }}
     }});
     Promise.all([refreshAll(), loadLlmDefaults()])
       .then(() => searchPapers())
-      .catch(err => log("initial load failed: " + err.message));
+      .catch(err => log("控制台初始化失败：" + err.message));
     setInterval(() => {{
-      refreshAll().catch(err => log("auto refresh failed: " + err.message));
+      refreshAll().catch(err => log("自动刷新失败：" + err.message));
       if (selectedRunId) {{
         inspectRun(selectedRunId, true).catch(() => {{}});
       }}
@@ -1758,12 +1888,12 @@ def _console_login_html(error: str | None) -> str:
 </head>
 <body>
   <form class="card" method="post" action="/console/login">
-    <h1>Operator Login</h1>
-    <p>Enter the configured operator token to access the advanced console.</p>
+    <h1>操作台登录</h1>
+    <p>输入已配置的 operator token 后即可进入自动实验控制台。</p>
     {error_block}
-    <input type="password" name="token" placeholder="Operator token" autofocus />
-    <button type="submit">Enter Console</button>
-    <p style="margin-top:12px"><a href="/fars">Back to FARS</a></p>
+    <input type="password" name="token" placeholder="Operator Token" autofocus />
+    <button type="submit">进入控制台</button>
+    <p style="margin-top:12px"><a href="/fars">返回 FARS 公共页</a></p>
   </form>
 </body>
 </html>"""

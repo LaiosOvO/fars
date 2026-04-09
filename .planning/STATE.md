@@ -103,6 +103,7 @@ Recent decisions affecting current work:
 - Enhancement: research-loop run/batch/continue APIs now accept and persist Codex LLM execution metadata (`profile/model/reasoning`) for experiment traceability.
 - Enhancement: `/console` now shows per-run Codex execution config inside the runs table for quick operator inspection.
 - Enhancement: `/console` now ships a live run inspector (selected run summary + latest events) and 15s operator polling.
+- Enhancement: `/console` is now localized to Chinese and includes paper-stage completion visibility/actions (报告 / 论文草稿 / 产物包).
 
 ### Pending Todos
 

@@ -410,6 +410,8 @@ operator view：
 - Codex LLM config controls（profile/model/reasoning）
 - per-run LLM config visibility in the runs table
 - live run inspector（status + latest events + auto refresh）
+- 中文 operator UI
+- 论文阶段完成面板（报告 / 论文草稿 / 产物包）
 - reconcile
 - paper explorer
 - graph viewer

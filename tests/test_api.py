@@ -311,31 +311,37 @@ def test_console_ui_routes(tmp_path: Path) -> None:
     assert console.status_code == 200
     assert "text/html" in console.headers["content-type"]
     body = console.text
-    assert "FARS Research Console" in body
+    assert "FARS 自动实验控制台" in body
     assert "research-loops/run" in body
-    assert "Auto experiment run with Codex LLM config." in body
-    assert "llm profile: frontier" in body
-    assert "model (auto from profile if empty)" in body
+    assert "使用 Codex 配置运行一次完整自动实验。" in body
+    assert "模型档位：frontier" in body
+    assert "模型名（留空则按档位自动填充）" in body
     assert "<th>LLM</th>" in body
     assert "parseRunLlm" in body
-    assert "Run Inspector" in body
+    assert "运行检查器" in body
     assert 'id="run-detail"' in body
     assert 'id="run-events"' in body
+    assert 'id="run-stages"' in body
+    assert 'id="run-report-generate"' in body
+    assert 'id="run-draft-generate"' in body
+    assert 'id="run-bundle-generate"' in body
     assert 'id="inspect-run-submit"' in body
     assert "inspectRun(" in body
+    assert "renderRunStages" in body
+    assert "runStageAction" in body
     assert "const CONSOLE_POLL_INTERVAL_MS = 15000;" in body
-    assert "Continue Auto Experiment Run" in body
+    assert "继续已有实验" in body
     assert "continue-submit" in body
     assert "const llmDefaults" in body
     assert "loadLlmDefaults" in body
     assert "/system/info" in body
     assert "const API = \"/api\"" in body
-    assert "Graph Viewer" in body
-    assert "Paper Explorer" in body
+    assert "图谱查看器" in body
+    assert "论文浏览器" in body
     assert "paper-search" in body
-    assert "Run Reconciliation" in body
+    assert "运行结果对齐" in body
     assert "reconcile-submit" in body
-    assert "Logs" in body
+    assert "操作日志" in body
 
 
 def test_console_operator_token_gate_and_login(tmp_path: Path) -> None:
@@ -350,7 +356,7 @@ def test_console_operator_token_gate_and_login(tmp_path: Path) -> None:
 
     locked = client.get("/console")
     assert locked.status_code == 401
-    assert "Operator Login" in locked.text
+    assert "操作台登录" in locked.text
 
     public_data = client.get("/fars/data")
     assert public_data.status_code == 200
@@ -408,7 +414,7 @@ def test_console_operator_token_gate_and_login(tmp_path: Path) -> None:
 
     unlocked = client.get("/console")
     assert unlocked.status_code == 200
-    assert "FARS Research Console" in unlocked.text
+    assert "FARS 自动实验控制台" in unlocked.text
 
     allowed = client.post(
         "/api/research-loops/batch-run",
