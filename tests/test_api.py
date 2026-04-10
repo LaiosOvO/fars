@@ -329,6 +329,7 @@ def test_console_ui_routes(tmp_path: Path) -> None:
     assert "inspectRun(" in body
     assert "renderRunStages" in body
     assert "runStageAction" in body
+    assert "工作树：" in body
     assert "const CONSOLE_POLL_INTERVAL_MS = 15000;" in body
     assert "继续已有实验" in body
     assert "continue-submit" in body
@@ -342,6 +343,10 @@ def test_console_ui_routes(tmp_path: Path) -> None:
     assert "运行结果对齐" in body
     assert "reconcile-submit" in body
     assert "操作日志" in body
+    assert 'lang="zh-CN"' in body
+    assert "function humanStatus(status)" in body
+    assert "运行 ID：" in body
+    assert "时间：" in body
 
 
 def test_console_operator_token_gate_and_login(tmp_path: Path) -> None:
@@ -357,6 +362,14 @@ def test_console_operator_token_gate_and_login(tmp_path: Path) -> None:
     locked = client.get("/console")
     assert locked.status_code == 401
     assert "操作台登录" in locked.text
+    assert "<title>FARS 操作台登录</title>" in locked.text
+    assert 'lang="zh-CN"' in locked.text
+    assert 'placeholder="操作台 Token"' in locked.text
+    assert "操作台 Token 无效" not in locked.text
+
+    invalid_login = client.post("/console/login", data={"token": "wrong-token"})
+    assert invalid_login.status_code == 401
+    assert "操作台 Token 无效" in invalid_login.text
 
     public_data = client.get("/fars/data")
     assert public_data.status_code == 200

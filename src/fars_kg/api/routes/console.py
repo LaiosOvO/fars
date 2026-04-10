@@ -103,7 +103,7 @@ async def console_login(request: Request):
     body = (await request.body()).decode("utf-8")
     token = parse_qs(body).get("token", [""])[0]
     if token != settings.operator_token:
-        return HTMLResponse(_console_login_html(error="Operator Token 无效"), status_code=401)
+        return HTMLResponse(_console_login_html(error="操作台 Token 无效"), status_code=401)
     response = RedirectResponse(url="/console", status_code=303)
     response.set_cookie(
         key=OPERATOR_SESSION_COOKIE,
@@ -123,7 +123,7 @@ def console_logout() -> RedirectResponse:
 
 def _console_html(api_prefix: str) -> str:
     return f"""<!doctype html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -344,7 +344,7 @@ machine translation</textarea></div>
           <div class="c3"><input id="batch-limit" type="number" min="1" max="20" value="2" /></div>
           <div class="c3"><input id="batch-iter" type="number" min="1" max="20" value="2" /></div>
           <div class="c3"><input id="batch-concurrency" type="number" min="1" max="8" value="2" /></div>
-          <div class="c3"><input id="batch-prefix" placeholder="branch prefix" value="batch-ui" /></div>
+          <div class="c3"><input id="batch-prefix" placeholder="分支前缀" value="batch-ui" /></div>
         </div>
         <div class="row">
           <div class="c6">
@@ -449,7 +449,7 @@ machine translation</textarea></div>
           <thead>
             <tr><th>ID</th><th>状态</th><th>LLM</th><th>分支</th><th>摘要</th><th>操作</th></tr>
           </thead>
-          <tbody id="runs-body"><tr><td colspan="6">Loading...</td></tr></tbody>
+          <tbody id="runs-body"><tr><td colspan="6">加载中...</td></tr></tbody>
         </table>
       </div>
       <div class="panel span-4">
@@ -508,7 +508,7 @@ machine translation</textarea></div>
           <thead>
             <tr><th>批次 ID</th><th>类型</th><th>创建时间</th><th>清单</th><th>下载</th></tr>
           </thead>
-          <tbody id="batches-body"><tr><td colspan="5">Loading...</td></tr></tbody>
+          <tbody id="batches-body"><tr><td colspan="5">加载中...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -549,7 +549,7 @@ machine translation</textarea></div>
         ...options,
       }});
       if (!res.ok) {{
-        let detail = `${{res.status}} ${{res.statusText}}`;
+        let detail = `请求失败：${{res.status}} ${{res.statusText}}`;
         try {{
           const body = await res.json();
           if (body.detail) detail = body.detail;
@@ -617,20 +617,33 @@ machine translation</textarea></div>
     }}
 
     function badge(status) {{
-      const cls = status === "completed" || status === "ready" ? "ok" : (status.includes("fail") ? "err" : "warn");
-      return `<span class="tag ${{cls}}">${{status}}</span>`;
+      const normalized = (status || "").toLowerCase();
+      const cls = normalized === "completed" || normalized === "ready" ? "ok" : (normalized.includes("fail") ? "err" : "warn");
+      return `<span class="tag ${{cls}}">${{humanStatus(status)}}</span>`;
     }}
 
     let selectedRunId = null;
+
+    function humanStatus(status) {{
+      const mapping = {{
+        created: "已创建",
+        completed: "已完成",
+        ready: "已就绪",
+        failed: "失败",
+        running: "运行中",
+        pending: "等待中",
+      }};
+      return mapping[status] || status || "未知";
+    }}
 
     function parseRunLlm(run) {{
       try {{
         const payload = run.result_payload_json ? JSON.parse(run.result_payload_json) : null;
         const llm = payload && payload.llm ? payload.llm : null;
-        if (!llm) return "-";
-        return `${{llm.profile || "profile?"}} / ${{llm.model || "model?"}} / ${{llm.reasoning_effort || "reasoning?"}}`;
+        if (!llm) return "未配置";
+        return `${{llm.profile || "未指定档位"}} / ${{llm.model || "未指定模型"}} / ${{llm.reasoning_effort || "未指定推理强度"}}`;
       }} catch (_err) {{
-        return "-";
+        return "未配置";
       }}
     }}
 
@@ -670,7 +683,7 @@ machine translation</textarea></div>
         svg += `<text x="${{point.x}}" y="${{height - 8}}" text-anchor="middle" fill="#9fb2d4" font-size="10">#${{point.iteration_index}}</text>`;
       }});
       const last = points[points.length - 1];
-      svg += `<text x="${{width - padding}}" y="${{padding - 8}}" text-anchor="end" fill="#d8e4ff" font-size="11">${{last.metric_name || "metric"}}: ${{last.value}}</text>`;
+      svg += `<text x="${{width - padding}}" y="${{padding - 8}}" text-anchor="end" fill="#d8e4ff" font-size="11">${{last.metric_name || "指标"}}: ${{last.value}}</text>`;
       svg += "</svg>";
       host.innerHTML = svg;
     }}
@@ -692,7 +705,7 @@ machine translation</textarea></div>
         {{ name: "论文草稿", done: Boolean(run && run.paper_draft_title), detail: run && run.paper_draft_title ? run.paper_draft_title : "未生成" }},
         {{ name: "产物打包", done: Boolean(run && run.artifact_dir), detail: run && run.artifact_dir ? run.artifact_dir : "未生成" }},
         {{ name: "事件轨迹", done: Boolean(events && events.length > 0), detail: `${{events.length}} 条事件` }},
-        {{ name: "LLM 配置", done: llm !== "-", detail: llm }},
+        {{ name: "LLM 配置", done: llm !== "未配置", detail: llm }},
       ];
       document.getElementById("run-stages").textContent = stages
         .map((stage) => `${{stage.done ? "✅" : "⏳"}} ${{stage.name}}｜${{stage.detail}}`)
@@ -734,7 +747,7 @@ machine translation</textarea></div>
       try {{
         const numericRunId = Number(runId);
         if (!Number.isInteger(numericRunId) || numericRunId <= 0) {{
-          throw new Error("Provide a valid run id");
+          throw new Error("请输入有效的运行 ID。");
         }}
         selectedRunId = numericRunId;
         document.getElementById("inspect-run-id").value = String(numericRunId);
@@ -745,32 +758,28 @@ machine translation</textarea></div>
           fetchJson(`${{API}}/runs/${{numericRunId}}/iterations`),
         ]);
         const llm = parseRunLlm(run);
-        document.getElementById("run-detail").textContent = JSON.stringify({{
-          id: run.id,
-          status: status.status,
-          summary: status.summary,
-          llm,
-          branch_name: run.branch_name,
-          worktree_path: run.worktree_path,
-          artifact_dir: run.artifact_dir,
-          report_title: run.report_title,
-          paper_draft_title: run.paper_draft_title,
-        }}, null, 2);
+        document.getElementById("run-detail").textContent = [
+          `运行 ID：${{run.id}}`,
+          `状态：${{humanStatus(status.status)}}`,
+          `摘要：${{status.summary || "暂无"}}`,
+          `LLM：${{llm}}`,
+          `分支：${{run.branch_name || "无"}}`,
+          `工作树：${{run.worktree_path || "无"}}`,
+          `产物目录：${{run.artifact_dir || "尚未生成"}}`,
+          `研究报告：${{run.report_title || "尚未生成"}}`,
+          `论文草稿：${{run.paper_draft_title || "尚未生成"}}`,
+        ].join("\\n");
         renderRunStages({{ run, events, iterations, llm }});
         renderRunChart(iterations);
-        document.getElementById("run-events").textContent = JSON.stringify(
-          events.slice(-12).map((event) => ({{
-            time_created: event.time_created,
-            event_type: event.event_type,
-            status: event.status,
-            source: event.source,
-            message: event.message,
-          }})),
-          null,
-          2,
-        );
+        document.getElementById("run-events").textContent = events.slice(-12).map((event) => [
+          `时间：${{event.time_created}}`,
+          `类型：${{event.event_type}}`,
+          `状态：${{humanStatus(event.status)}}`,
+          `来源：${{event.source}}`,
+          `消息：${{event.message}}`,
+        ].join("\\n")).join("\\n\\n");
         if (!silent) {{
-          log(`run ${{numericRunId}} inspected`, {{ status: status.status, llm }});
+          log(`已检查运行 #${{numericRunId}}`, {{ status: status.status, llm }});
         }}
       }} catch (err) {{
         document.getElementById("run-detail").textContent = "运行检查失败：" + err.message;
@@ -917,7 +926,11 @@ machine translation</textarea></div>
           body: JSON.stringify(payload),
         }});
         log("单次自动实验已完成", result);
+        selectedRunId = result.run_id || null;
         await refreshAll();
+        if (selectedRunId) {{
+          await inspectRun(selectedRunId, true);
+        }}
       }} catch (err) {{
         log("单次自动实验失败：" + err.message);
       }}
@@ -940,7 +953,12 @@ machine translation</textarea></div>
           body: JSON.stringify(payload),
         }});
         log("批量自动实验已完成", result);
+        const firstCompleted = (result.items || []).find((item) => item && item.run_id);
+        selectedRunId = firstCompleted ? firstCompleted.run_id : selectedRunId;
         await refreshAll();
+        if (selectedRunId) {{
+          await inspectRun(selectedRunId, true);
+        }}
       }} catch (err) {{
         log("批量自动实验失败：" + err.message);
       }}
@@ -962,7 +980,9 @@ machine translation</textarea></div>
           body: JSON.stringify(payload),
         }});
         log(`继续运行已完成 #${{runId}}`, result);
+        selectedRunId = runId;
         await refreshAll();
+        await inspectRun(runId, true);
       }} catch (err) {{
         log("继续运行失败：" + err.message);
       }}
@@ -1000,7 +1020,7 @@ machine translation</textarea></div>
       const cx = width / 2;
       const cy = height / 2;
       const radius = 130;
-      const centerLabel = `Paper ${{paperId}}`;
+      const centerLabel = `论文 ${{paperId}}`;
       let svg = `<svg viewBox="0 0 ${{width}} ${{height}}" width="100%" height="${{height}}">`;
       svg += `<circle cx="${{cx}}" cy="${{cy}}" r="28" fill="#21418a" stroke="#6aa4ff" />`;
       svg += `<text x="${{cx}}" y="${{cy + 5}}" text-anchor="middle" fill="#fff" font-size="10">${{centerLabel}}</text>`;
@@ -1061,7 +1081,7 @@ machine translation</textarea></div>
 
 def _fars_html(api_prefix: str) -> str:
     return f"""<!doctype html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -1849,11 +1869,11 @@ def _fars_html(api_prefix: str) -> str:
 def _console_login_html(error: str | None) -> str:
     error_block = f'<p style="color:#f46b6b;margin:0 0 12px">{error}</p>' if error else ""
     return f"""<!doctype html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>FARS Console Login</title>
+  <title>FARS 操作台登录</title>
   <style>
     body {{
       margin: 0;
@@ -1891,7 +1911,7 @@ def _console_login_html(error: str | None) -> str:
     <h1>操作台登录</h1>
     <p>输入已配置的 operator token 后即可进入自动实验控制台。</p>
     {error_block}
-    <input type="password" name="token" placeholder="Operator Token" autofocus />
+    <input type="password" name="token" placeholder="操作台 Token" autofocus />
     <button type="submit">进入控制台</button>
     <p style="margin-top:12px"><a href="/fars">返回 FARS 公共页</a></p>
   </form>
